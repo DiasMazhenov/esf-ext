@@ -237,13 +237,19 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.12
+0.1.13
 ```
 
 Next verification step:
 
 ```text
 Open ESF login modal -> click floating "Войти через Touch ID" panel -> Touch ID -> SDK signs auth ticket -> native host returns sessionId.
+```
+
+Latest fix:
+
+```text
+SessionService.createSessionSigned now sends signedAuthTicket in CDATA, matching SDK SoapUI samples. XML-escaping the signed XML caused ESF SOAP 500 SecurityError.
 ```
 
 ### Java/JDK
@@ -325,26 +331,22 @@ Completed:
 - content script no longer injects inside the React modal. It shows a fixed floating Touch ID panel above the page when body text contains `Способ авторизации` and `Войти с помощью ЭЦП`.
 - floating Touch ID panel is positioned 100px higher than before (`bottom: 124px`).
 - native host has SOAP `createAuthTicket` command for `AuthService.createAuthTicket` on `https://esf.gov.kz:8443/esf-web/ws/api1/AuthService`.
-- extension version bumped to display `0.1.11` (`manifest.version` is `0.1.11`, `manifest.version_name` is `0.1.11`).
+- native host creates ESF signed sessions through `createAuthTicket -> Touch ID -> signXml -> createSessionSigned`;
+- `signedAuthTicket` is sent as CDATA, matching SDK SoapUI samples;
+- extension version bumped to display `0.1.13` (`manifest.version` is `0.1.13`, `manifest.version_name` is `0.1.13`).
 
 Pending:
-- Reload extension in Chrome and verify setup save -> Touch ID unlock path.
-- Verify content script button appears in ESF login modal.
-- Verify `createAuthTicket` against ESF endpoint with current config.
-- Implement SOAP calls for `createSessionSigned`, `currentSessionStatus`, `closeSession`.
+- Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
+- If ESF still returns SOAP error, inspect signed ticket format/certificate role.
+- Implement SOAP calls for `currentSessionStatus`, `closeSession`.
 - Test against ESF test stand.
 
 ## Next Step
 1. In `chrome://extensions`, click reload on `ESF Touch ID Auth`.
-2. Open the extension popup.
-3. Fill:
-   - ИИН
-   - click `Выбрать` for `.p12` or paste full path
-   - PIN ЭЦП
-4. Click `Сохранить настройку`.
-5. Click `Войти`.
-6. Complete Touch ID.
-7. Verify popup shows `PIN открыт через Touch ID`.
+2. Open ESF login modal.
+3. Click the floating `Войти через Touch ID` panel.
+4. Complete Touch ID.
+5. Verify ESF returns `sessionId` or a clear SOAP error.
 
 ## Security Rules
 - Never store real PIN in Chrome extension storage.

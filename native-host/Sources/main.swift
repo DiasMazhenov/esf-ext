@@ -229,6 +229,10 @@ func xmlUnescape(_ value: String) -> String {
         .replacingOccurrences(of: "&amp;", with: "&")
 }
 
+func xmlCdata(_ value: String) -> String {
+    "<![CDATA[\(value.replacingOccurrences(of: "]]>", with: "]]]]><![CDATA[>"))]]>"
+}
+
 func extractXmlElement(_ name: String, from xml: String) -> String? {
     let pattern = "<(?:[A-Za-z0-9_]+:)?\(name)\\b[^>]*>([\\s\\S]*?)</(?:[A-Za-z0-9_]+:)?\(name)>"
     guard let regex = try? NSRegularExpression(pattern: pattern) else {
@@ -406,7 +410,7 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String) throws -> 
       <soapenv:Body>
         <esf:createSessionSignedRequest>
           <tin>\(xmlEscape(config.tin))</tin>
-          <signedAuthTicket>\(xmlEscape(signedAuthTicket))</signedAuthTicket>
+          <signedAuthTicket>\(xmlCdata(signedAuthTicket))</signedAuthTicket>
         </esf:createSessionSignedRequest>
       </soapenv:Body>
     </soapenv:Envelope>
