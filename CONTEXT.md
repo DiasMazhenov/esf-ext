@@ -169,6 +169,7 @@ unlockPin
 chooseCertificate
 createAuthTicket
 createSignedSession
+createSessionFromSignedTicket
 signXml
 ```
 
@@ -196,6 +197,13 @@ Rules:
   4. signs ticket through `sdk-bridge/bin/sign-xml`;
   5. calls `SessionService.createSessionSigned`;
   6. returns `sessionId` to the extension.
+- Experimental NCALayer flow:
+  1. native host creates `authTicketXml`;
+  2. extension asks NCALayer at `wss://127.0.0.1:13579/` or `ws://127.0.0.1:13579/`;
+  3. NCALayer signs through `kz.gov.pki.knca.commonUtils.signXml`;
+  4. extension sends signed ticket back to native command `createSessionFromSignedTicket`;
+  5. native host calls `SessionService.createSessionSigned`.
+- Debug XML files are written locally under `~/Library/Application Support/kz.esf.touchid/debug`.
 - The floating site panel is raised above the footer: `bottom: 124px`.
 
 Verified:
@@ -237,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.17
+0.1.18
 ```
 
 Next verification step:
@@ -249,7 +257,7 @@ Open ESF login modal -> click floating "Войти через Touch ID" panel ->
 Latest fix:
 
 ```text
-Popup shows the current extension version next to the title. Native diagnostics filter SLF4J noise.
+Experimental NCALayer fallback added without removing the SDK bridge.
 ```
 
 ### Java/JDK
@@ -338,10 +346,15 @@ Completed:
 - Java `SignXml` verifies the generated XML signature locally and emits sanitized diagnostics: `localVerify`, `signatureMethod`, certificate subject/issuer/notAfter;
 - popup header shows `version_name` next to `Touch ID Auth`;
 - native diagnostics filter SLF4J noise before returning errors to Chrome;
-- extension version bumped to display `0.1.17` (`manifest.version` is `0.1.17`, `manifest.version_name` is `0.1.17`).
+- popup and site floating panel have `Через NCA` / `Войти через NCA Layer` fallback buttons;
+- extension service worker signs `authTicketXml` through NCALayer commonUtils `signXml`;
+- native host accepts external signed tickets through `createSessionFromSignedTicket`;
+- local debug XML snapshots are saved under Application Support for comparison and are not committed;
+- extension version bumped to display `0.1.18` (`manifest.version` is `0.1.18`, `manifest.version_name` is `0.1.18`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
+- Start NCALayer and test `Войти через NCA Layer`.
 - If Java bridge returns `unsupported-signature-method`, choose a GOST512 NCA `.p12` certificate instead of RSA.
 - Implement SOAP calls for `currentSessionStatus`, `closeSession`.
 - Test against ESF test stand.

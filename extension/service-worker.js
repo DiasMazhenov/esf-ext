@@ -1,5 +1,6 @@
 const SESSION_KEY = 'esfSession';
 const NATIVE_HOST = 'kz.esf.touchid';
+const NCA_LAYER_ENDPOINTS = ['wss://127.0.0.1:13579/', 'ws://127.0.0.1:13579/'];
 
 const readSession = async () => {
   const result = await chrome.storage.session.get(SESSION_KEY);
@@ -23,6 +24,85 @@ const sendNativeCommand = (command, payload = {}) => new Promise((resolve, rejec
     }
     resolve(response);
   });
+});
+
+const extractNcaPayload = (response) => {
+  if (!response || typeof response !== 'object') {
+    throw new Error('NCALayer вернул пустой ответ.');
+  }
+
+  if (response.code && String(response.code) !== '200') {
+    throw new Error(response.message || response.responseObject || `NCALayer code ${response.code}`);
+  }
+
+  if (response.status === false) {
+    throw new Error(response.message || response.error || 'NCALayer command failed.');
+  }
+
+  const payload = response.responseObject ?? response.result ?? response.body ?? response.data;
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
+
+  if (payload && typeof payload === 'object') {
+    const nested = payload.xml ?? payload.signedXml ?? payload.result;
+    if (typeof nested === 'string' && nested.trim()) {
+      return nested;
+    }
+  }
+
+  throw new Error(`NCALayer response не содержит signed XML: ${JSON.stringify(response).slice(0, 300)}`);
+};
+
+const sendNcaLayerRequest = (request) => new Promise((resolve, reject) => {
+  const endpoints = [...NCA_LAYER_ENDPOINTS];
+  let socket;
+  let timer;
+
+  const finish = (callback, value) => {
+    clearTimeout(timer);
+    callback(value);
+  };
+
+  const tryNextEndpoint = () => {
+    const endpoint = endpoints.shift();
+    if (!endpoint) {
+      finish(reject, new Error('NCALayer не отвечает на 127.0.0.1:13579. Запустите NCALayer и попробуйте снова.'));
+      return;
+    }
+
+    clearTimeout(timer);
+    socket = new WebSocket(endpoint);
+    timer = setTimeout(() => {
+      socket.close();
+      tryNextEndpoint();
+    }, 60000);
+    socket.addEventListener('open', () => {
+      socket.send(JSON.stringify(request));
+    });
+    socket.addEventListener('message', (event) => {
+      try {
+        const response = JSON.parse(event.data);
+        finish(resolve, extractNcaPayload(response));
+      } catch (error) {
+        finish(reject, error);
+      } finally {
+        socket.close();
+      }
+    });
+    socket.addEventListener('error', () => {
+      socket.close();
+      tryNextEndpoint();
+    });
+  };
+
+  tryNextEndpoint();
+});
+
+const signXmlViaNcaLayer = async (xml) => sendNcaLayerRequest({
+  module: 'kz.gov.pki.knca.commonUtils',
+  method: 'signXml',
+  args: ['PKCS12', 'SIGNATURE', xml, '', '']
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -117,6 +197,33 @@ async function handleCommand(message) {
         ok: true,
         status: 'OK',
         title: 'Сессия ИС ЭСФ создана',
+        detail: `sessionId: ${nativeResponse.sessionId}`
+      };
+    }
+    case 'loginViaNcaLayer': {
+      const ticketResponse = await sendNativeCommand('createAuthTicket');
+      if (!ticketResponse?.ok) {
+        return { ok: false, error: ticketResponse?.message || 'Auth ticket не получен.' };
+      }
+
+      const signedAuthTicket = await signXmlViaNcaLayer(ticketResponse.authTicketXml);
+      const nativeResponse = await sendNativeCommand('createSessionFromSignedTicket', { signedAuthTicket });
+      if (!nativeResponse?.ok) {
+        return { ok: false, error: nativeResponse?.message || 'Сессия через NCALayer не создана.' };
+      }
+
+      const session = {
+        id: nativeResponse.sessionId,
+        status: 'OK',
+        createdAt: new Date().toISOString(),
+        nativeMessage: nativeResponse.message,
+        signedBy: 'ncalayer'
+      };
+      await writeSession(session);
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Сессия ИС ЭСФ создана через NCALayer',
         detail: `sessionId: ${nativeResponse.sessionId}`
       };
     }

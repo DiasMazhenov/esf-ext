@@ -9,6 +9,7 @@ const pinInput = document.querySelector('#pinInput');
 const chooseCertificateButton = document.querySelector('#chooseCertificateButton');
 const saveConfigButton = document.querySelector('#saveConfigButton');
 const loginButton = document.querySelector('#loginButton');
+const ncaLoginButton = document.querySelector('#ncaLoginButton');
 const checkButton = document.querySelector('#checkButton');
 const logoutButton = document.querySelector('#logoutButton');
 
@@ -18,6 +19,7 @@ const setBusy = (busy) => {
   chooseCertificateButton.disabled = busy;
   saveConfigButton.disabled = busy;
   loginButton.disabled = busy;
+  ncaLoginButton.disabled = busy;
   checkButton.disabled = busy;
   logoutButton.disabled = busy;
   if (busy) {
@@ -80,6 +82,7 @@ chooseCertificateButton.addEventListener('click', async () => {
 });
 
 loginButton.addEventListener('click', () => sendCommand('login'));
+ncaLoginButton.addEventListener('click', () => sendCommand('loginViaNcaLayer'));
 checkButton.addEventListener('click', () => sendCommand('status'));
 logoutButton.addEventListener('click', () => sendCommand('logout'));
 

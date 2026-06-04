@@ -9,6 +9,7 @@ struct NativeRequest: Decodable {
     let certificatePath: String?
     let pin: String?
     let xml: String?
+    let signedAuthTicket: String?
 }
 
 struct NativeResponse: Encodable {
@@ -89,6 +90,30 @@ func appSupportDir(create: Bool) throws -> URL {
 
 func configUrl(createDirectory: Bool) throws -> URL {
     try appSupportDir(create: createDirectory).appendingPathComponent("config.json")
+}
+
+func debugDir(create: Bool) throws -> URL {
+    let dir = try appSupportDir(create: create).appendingPathComponent("debug", isDirectory: true)
+    if create {
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+    }
+    return dir
+}
+
+func debugTimestamp() -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyyMMdd-HHmmss"
+    formatter.timeZone = TimeZone(identifier: "Asia/Almaty")
+    return formatter.string(from: Date())
+}
+
+func writeDebugXml(_ name: String, _ xml: String) {
+    do {
+        let url = try debugDir(create: true).appendingPathComponent("\(debugTimestamp())-\(name).xml")
+        try xml.write(to: url, atomically: true, encoding: .utf8)
+    } catch {
+        // Debug output must never break auth flow.
+    }
 }
 
 func loadConfig() throws -> EsfConfig? {
@@ -417,6 +442,7 @@ func createAuthTicket() throws -> NativeResponse {
     }
 
     let authTicketXml = try createAuthTicketXml(config: config)
+    writeDebugXml("auth-ticket", authTicketXml)
 
     return NativeResponse(
         ok: true,
@@ -432,6 +458,7 @@ func createAuthTicket() throws -> NativeResponse {
 }
 
 func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostics: String) throws -> String {
+    writeDebugXml("signed-auth-ticket", signedAuthTicket)
     let endpoint = URL(string: "\(esfWebUrl)/ws/api1/SessionService")!
     let envelope = """
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:esf="esf">
@@ -563,6 +590,29 @@ func createSignedSessionAfterTouchId() throws -> NativeResponse {
     )
 }
 
+func createSessionFromSignedTicket(_ request: NativeRequest) throws -> NativeResponse {
+    let command = "createSessionFromSignedTicket"
+    guard let config = try loadConfig() else {
+        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
+    }
+
+    let signedAuthTicket = try normalizedRequired(request.signedAuthTicket ?? request.xml, name: "signedAuthTicket")
+    let sessionId = try createSessionSigned(config: config, signedAuthTicket: signedAuthTicket, diagnostics: "signedBy=ncalayer")
+
+    return NativeResponse(
+        ok: true,
+        command: command,
+        message: "session-created",
+        timestamp: nowIso8601(),
+        configured: true,
+        iin: config.iin,
+        tin: config.tin,
+        certificatePath: config.certificatePath,
+        sessionId: sessionId,
+        diagnostics: "signedBy=ncalayer"
+    )
+}
+
 func chooseCertificatePath() -> NativeResponse {
     let command = "chooseCertificate"
 
@@ -631,6 +681,8 @@ func handle(_ data: Data) throws -> NativeResponse {
         return try createAuthTicket()
     case "createSignedSession":
         return try createSignedSessionAfterTouchId()
+    case "createSessionFromSignedTicket":
+        return try createSessionFromSignedTicket(request)
     case "signXml":
         return try signXmlAfterTouchId(request)
     case "chooseCertificate":

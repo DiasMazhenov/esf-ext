@@ -3,6 +3,7 @@
 # Build outputs
 native-host/bin/
 sdk-bridge/bin/
+debug/
 
 # Local/private certificate material
 *.p12

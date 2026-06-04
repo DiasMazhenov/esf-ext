@@ -38,17 +38,22 @@ const ensureTouchIdPanel = () => {
   button.type = 'button';
   button.textContent = 'Войти через Touch ID';
 
+  const ncaButton = document.createElement('button');
+  ncaButton.type = 'button';
+  ncaButton.textContent = 'Войти через NCA Layer';
+
   const status = document.createElement('div');
   status.id = STATUS_ID;
   status.textContent = 'Расширение готово';
 
-  button.addEventListener('click', async () => {
+  const runLogin = async (command, busyText, fallbackText) => {
     button.disabled = true;
-    setStatus('Проверка Touch ID...', 'busy');
+    ncaButton.disabled = true;
+    setStatus(busyText, 'busy');
     try {
-      const response = await chrome.runtime.sendMessage({ command: 'login' });
+      const response = await chrome.runtime.sendMessage({ command });
       if (!response?.ok) {
-        setStatus(response?.error || 'Не удалось выполнить вход через Touch ID.', 'error');
+        setStatus(response?.error || fallbackText, 'error');
         return;
       }
       setStatus(response.detail || response.title || 'Touch ID подтверждён.', 'ok');
@@ -56,10 +61,19 @@ const ensureTouchIdPanel = () => {
       setStatus(error.message, 'error');
     } finally {
       button.disabled = false;
+      ncaButton.disabled = false;
     }
+  };
+
+  button.addEventListener('click', () => {
+    runLogin('login', 'Проверка Touch ID...', 'Не удалось выполнить вход через Touch ID.');
   });
 
-  panel.append(button, status);
+  ncaButton.addEventListener('click', () => {
+    runLogin('loginViaNcaLayer', 'Ожидание подписи в NCA Layer...', 'Не удалось выполнить вход через NCA Layer.');
+  });
+
+  panel.append(button, ncaButton, status);
   document.documentElement.append(panel);
   console.info('[ESF Touch ID Auth] Floating login panel injected');
 };
