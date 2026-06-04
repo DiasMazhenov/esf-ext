@@ -5,6 +5,8 @@ const NCA_LAYER_ENDPOINTS = [
   'wss://localhost:13579/'
 ];
 
+const isNcaGreeting = (response) => Boolean(response?.result?.version && !response.responseObject);
+
 const readSession = async () => {
   const result = await chrome.storage.session.get(SESSION_KEY);
   return result[SESSION_KEY] || null;
@@ -94,13 +96,20 @@ const sendNcaLayerRequest = (request) => new Promise((resolve, reject) => {
       socket.send(JSON.stringify(request));
     });
     socket.addEventListener('message', (event) => {
+      let shouldClose = true;
       try {
         const response = JSON.parse(event.data);
+        if (isNcaGreeting(response)) {
+          shouldClose = false;
+          return;
+        }
         finish(resolve, extractNcaPayload(response));
       } catch (error) {
         finish(reject, error);
       } finally {
-        socket.close();
+        if (shouldClose) {
+          socket.close();
+        }
       }
     });
     socket.addEventListener('error', () => {

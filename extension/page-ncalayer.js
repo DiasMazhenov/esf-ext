@@ -3,6 +3,8 @@
   const RESPONSE_TYPE = 'ESF_TOUCHID_NCA_SIGN_RESPONSE';
   const ENDPOINTS = ['wss://127.0.0.1:13579/', 'wss://localhost:13579/'];
 
+  const isNcaGreeting = (response) => Boolean(response?.result?.version && !response.responseObject);
+
   const extractPayload = (response) => {
     if (!response || typeof response !== 'object') {
       throw new Error('NCALayer вернул пустой ответ.');
@@ -68,12 +70,20 @@
       });
 
       socket.addEventListener('message', (event) => {
+        let shouldClose = true;
         try {
-          finish(resolve, extractPayload(JSON.parse(event.data)));
+          const response = JSON.parse(event.data);
+          if (isNcaGreeting(response)) {
+            shouldClose = false;
+            return;
+          }
+          finish(resolve, extractPayload(response));
         } catch (error) {
           finish(reject, error);
         } finally {
-          socket.close();
+          if (shouldClose) {
+            socket.close();
+          }
         }
       });
 
