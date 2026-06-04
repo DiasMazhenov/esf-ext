@@ -165,6 +165,7 @@ saveConfig
 configStatus
 unlockPin
 chooseCertificate
+signXml
 ```
 
 Popup has fields for:
@@ -193,6 +194,9 @@ node /Users/diasmazhenov/vibecode/esf-ext/native-host/test-ping.js
 node /Users/diasmazhenov/vibecode/esf-ext/native-host/test-command.js configStatus
 node --check /Users/diasmazhenov/vibecode/esf-ext/extension/popup.js
 node --check /Users/diasmazhenov/vibecode/esf-ext/extension/service-worker.js
+/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/test-sign.sh \
+  "/Users/diasmazhenov/Downloads/esf-sdk-2025/Документация ЭСФ SDK/sdk/localserver/AUTH_RSA256_CUSTOMER_NEW.p12" \
+  "Qwerty12"
 ```
 
 Result before user setup:
@@ -278,11 +282,13 @@ Completed:
 - Keychain-backed config commands added to native host;
 - popup setup form added for IIN/`.p12` path/PIN.
 - popup has a native file picker button for `.p12` path;
-- extension version bumped to display `0.1.04` (`manifest.version` is `0.1.4`, `manifest.version_name` is `0.1.04`).
+- SDK XML signing is wired into native host command `signXml`;
+- Java `SignXml` now reads PIN from env `ESF_CERT_PIN` instead of requiring PIN in argv;
+- extension version bumped to display `0.1.05` (`manifest.version` is `0.1.5`, `manifest.version_name` is `0.1.05`).
 
 Pending:
 - Reload extension in Chrome and verify setup save -> Touch ID unlock path.
-- Wire native host to Java `sign-xml` bridge.
+- Implement SOAP `AuthService.createAuthTicket`.
 - Implement SOAP calls for `createAuthTicket`, `createSessionSigned`, `currentSessionStatus`, `closeSession`.
 - Test against ESF test stand.
 

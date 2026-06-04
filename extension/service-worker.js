@@ -69,6 +69,20 @@ async function handleCommand(message) {
         certificatePath: nativeResponse.certificatePath
       };
     }
+    case 'signXml': {
+      const nativeResponse = await sendNativeCommand('signXml', { xml: message.xml });
+      if (!nativeResponse?.ok) {
+        return { ok: false, error: nativeResponse?.message || 'XML не подписан.' };
+      }
+
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'XML подписан',
+        detail: 'Auth ticket готов для createSessionSigned.',
+        signedXml: nativeResponse.signedXml
+      };
+    }
     case 'login': {
       const nativeResponse = await sendNativeCommand('unlockPin');
       if (!nativeResponse?.ok) {

@@ -6,5 +6,5 @@ CERT="${1:-/Users/diasmazhenov/Downloads/esf-sdk-2025/Документация �
 PIN="${2:-password}"
 XML='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><authSign><timeMark>1699849589660</timeMark><state>test-state</state><iin>123456789011</iin><ttlInMinutes>30</ttlInMinutes></authSign>'
 
-printf '%s' "$XML" | "$ROOT_DIR/bin/sign-xml" "$CERT" "$PIN" | grep -q "Signature"
+printf '%s' "$XML" | ESF_CERT_PIN="$PIN" "$ROOT_DIR/bin/sign-xml" "$CERT" | grep -q "Signature"
 echo "sign xml ok"

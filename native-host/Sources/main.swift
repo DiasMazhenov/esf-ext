@@ -8,6 +8,7 @@ struct NativeRequest: Decodable {
     let tin: String?
     let certificatePath: String?
     let pin: String?
+    let xml: String?
 }
 
 struct NativeResponse: Encodable {
@@ -19,6 +20,7 @@ struct NativeResponse: Encodable {
     let iin: String?
     let tin: String?
     let certificatePath: String?
+    let signedXml: String?
 
     init(
         ok: Bool,
@@ -28,7 +30,8 @@ struct NativeResponse: Encodable {
         configured: Bool? = nil,
         iin: String? = nil,
         tin: String? = nil,
-        certificatePath: String? = nil
+        certificatePath: String? = nil,
+        signedXml: String? = nil
     ) {
         self.ok = ok
         self.command = command
@@ -38,6 +41,7 @@ struct NativeResponse: Encodable {
         self.iin = iin
         self.tin = tin
         self.certificatePath = certificatePath
+        self.signedXml = signedXml
     }
 }
 
@@ -57,6 +61,7 @@ enum NativeHostError: Error {
 
 let keychainService = "kz.esf.touchid"
 let pinAccount = "certificate-pin"
+let signXmlPath = "/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/bin/sign-xml"
 
 func appSupportDir(create: Bool) throws -> URL {
     let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -277,6 +282,73 @@ func unlockPinAfterTouchId() throws -> NativeResponse {
     return responseFromConfig(command: command, message: "pin-unlocked", config: config, configured: true)
 }
 
+func runSignXml(xml: String, certificatePath: String, pin: String) throws -> String {
+    guard FileManager.default.isExecutableFile(atPath: signXmlPath) else {
+        throw NativeHostError.invalidConfig("sign-xml bridge is not built")
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: signXmlPath)
+    process.arguments = [certificatePath]
+    process.environment = ProcessInfo.processInfo.environment.merging(["ESF_CERT_PIN": pin]) { _, new in new }
+
+    let input = Pipe()
+    let output = Pipe()
+    let errorOutput = Pipe()
+    process.standardInput = input
+    process.standardOutput = output
+    process.standardError = errorOutput
+
+    try process.run()
+    input.fileHandleForWriting.write(Data(xml.utf8))
+    input.fileHandleForWriting.closeFile()
+    process.waitUntilExit()
+
+    let signedData = output.fileHandleForReading.readDataToEndOfFile()
+    let errorData = errorOutput.fileHandleForReading.readDataToEndOfFile()
+    let signedXml = String(data: signedData, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+    guard process.terminationStatus == 0, !signedXml.isEmpty else {
+        let errorMessage = String(data: errorData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        throw NativeHostError.invalidConfig(errorMessage ?? "sign-xml failed")
+    }
+
+    return signedXml
+}
+
+func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
+    let command = "signXml"
+    let xml = try normalizedRequired(request.xml, name: "xml")
+
+    guard let config = try loadConfig(), hasPin() else {
+        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
+    }
+
+    let touchResponse = evaluateTouchId()
+    guard touchResponse.ok else {
+        return touchResponse
+    }
+
+    guard let pin = try readPin(), !pin.isEmpty else {
+        return NativeResponse(ok: false, command: command, message: "pin-not-found", timestamp: nowIso8601(), configured: false)
+    }
+
+    let signedXml = try runSignXml(xml: xml, certificatePath: config.certificatePath, pin: pin)
+    return NativeResponse(
+        ok: true,
+        command: command,
+        message: "xml-signed",
+        timestamp: nowIso8601(),
+        configured: true,
+        iin: config.iin,
+        tin: config.tin,
+        certificatePath: config.certificatePath,
+        signedXml: signedXml
+    )
+}
+
 func chooseCertificatePath() -> NativeResponse {
     let command = "chooseCertificate"
 
@@ -341,6 +413,8 @@ func handle(_ data: Data) throws -> NativeResponse {
         return try configStatus()
     case "unlockPin":
         return try unlockPinAfterTouchId()
+    case "signXml":
+        return try signXmlAfterTouchId(request)
     case "chooseCertificate":
         return chooseCertificatePath()
     default:

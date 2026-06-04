@@ -13,14 +13,19 @@ public final class SignXml {
     private SignXml() {}
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2) {
-            System.err.println("Usage: SignXml <certificate-path> <certificate-pin>");
+        if (args.length < 1 || args.length > 2) {
+            System.err.println("Usage: SignXml <certificate-path> [certificate-pin]");
             System.exit(2);
         }
 
         String certificatePath = args[0];
-        String certificatePin = args[1];
+        String certificatePin = args.length == 2 ? args[1] : System.getenv("ESF_CERT_PIN");
         String xml = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
+
+        if (certificatePin == null || certificatePin.trim().isEmpty()) {
+            System.err.println("Certificate PIN is empty");
+            System.exit(2);
+        }
 
         if (xml.trim().isEmpty()) {
             System.err.println("XML stdin is empty");
