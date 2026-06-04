@@ -288,8 +288,8 @@ Completed:
 - Java `SignXml` now reads PIN from env `ESF_CERT_PIN` instead of requiring PIN in argv;
 - content script injects `Войти через Touch ID` into the ESF web login method modal;
 - content script match uses `https://esf.gov.kz/*`; do not include `:8443` in Chrome match patterns.
-- content script injection is robust against ESF class changes: it finds the existing `Войти с помощью ЭЦП` button and prepends `Войти через Touch ID` to that button's parent.
-- extension version bumped to display `0.1.08` (`manifest.version` is `0.1.8`, `manifest.version_name` is `0.1.08`).
+- content script injection is robust against ESF class changes and hidden ReactModal duplicates: it only targets visible `Войти с помощью ЭЦП` buttons, removes hidden stale injected buttons, and keeps polling until a visible injected button exists.
+- extension version bumped to display `0.1.09` (`manifest.version` is `0.1.9`, `manifest.version_name` is `0.1.09`).
 
 Pending:
 - Reload extension in Chrome and verify setup save -> Touch ID unlock path.

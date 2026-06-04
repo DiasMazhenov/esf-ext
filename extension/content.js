@@ -3,14 +3,32 @@ const STATUS_ID = 'esf-touchid-login-status';
 
 const normalizeText = (value) => (value || '').replace(/\s+/g, ' ').trim();
 
+const isVisible = (element) => {
+  if (!element) {
+    return false;
+  }
+  const style = window.getComputedStyle(element);
+  const rect = element.getBoundingClientRect();
+  return style.display !== 'none'
+    && style.visibility !== 'hidden'
+    && style.opacity !== '0'
+    && rect.width > 0
+    && rect.height > 0
+    && rect.bottom > 0
+    && rect.right > 0
+    && rect.top < window.innerHeight
+    && rect.left < window.innerWidth;
+};
+
 const findByText = (selector, text) => {
   const target = normalizeText(text);
-  return [...document.querySelectorAll(selector)].find((element) => normalizeText(element.textContent).includes(target)) || null;
+  return [...document.querySelectorAll(selector)]
+    .find((element) => isVisible(element) && normalizeText(element.textContent).includes(target)) || null;
 };
 
 const findAuthModal = () => {
   const dialogs = [...document.querySelectorAll('[role="dialog"], .ReactModal__Content')];
-  const modal = dialogs.find((dialog) => normalizeText(dialog.textContent).includes('Способ авторизации'));
+  const modal = dialogs.find((dialog) => isVisible(dialog) && normalizeText(dialog.textContent).includes('Способ авторизации'));
   if (modal) {
     return modal;
   }
@@ -22,13 +40,18 @@ const findAuthModal = () => {
 const findButtonContainer = (modal) => {
   const root = modal || document;
   const buttons = [...root.querySelectorAll('button')];
-  const ecpButton = buttons.find((button) => normalizeText(button.textContent).includes('Войти с помощью ЭЦП'));
+  const ecpButton = buttons.find((button) => isVisible(button) && normalizeText(button.textContent).includes('Войти с помощью ЭЦП'));
   if (ecpButton?.parentElement) {
-    return ecpButton.parentElement;
+    return { container: ecpButton.parentElement, before: ecpButton };
   }
 
   const globalEcpButton = findByText('button', 'Войти с помощью ЭЦП');
-  return globalEcpButton?.parentElement || root.querySelector('[class*="SelectMethodModal_container"]') || null;
+  if (globalEcpButton?.parentElement) {
+    return { container: globalEcpButton.parentElement, before: globalEcpButton };
+  }
+
+  const fallbackContainer = [...root.querySelectorAll('[class*="SelectMethodModal_container"]')].find(isVisible);
+  return fallbackContainer ? { container: fallbackContainer, before: fallbackContainer.firstElementChild } : null;
 };
 
 const setStatus = (container, message, type = 'idle') => {
@@ -44,8 +67,15 @@ const setStatus = (container, message, type = 'idle') => {
 };
 
 const injectTouchIdButton = () => {
+  [...document.querySelectorAll(`#${TOUCH_ID_BUTTON_ID}`)].forEach((button) => {
+    if (!isVisible(button)) {
+      button.remove();
+    }
+  });
+
   const modal = findAuthModal();
-  const container = findButtonContainer(modal);
+  const target = findButtonContainer(modal);
+  const container = target?.container;
   if (!container || container.querySelector(`#${TOUCH_ID_BUTTON_ID}`)) {
     return;
   }
@@ -78,8 +108,8 @@ const injectTouchIdButton = () => {
     }
   });
 
-  container.prepend(button);
-  console.info('[ESF Touch ID Auth] Login button injected');
+  container.insertBefore(button, target.before || container.firstElementChild);
+  console.info('[ESF Touch ID Auth] Login button injected', { container, before: target.before });
 };
 
 const observer = new MutationObserver(injectTouchIdButton);
@@ -91,7 +121,8 @@ let attempts = 0;
 const interval = window.setInterval(() => {
   injectTouchIdButton();
   attempts += 1;
-  if (attempts >= 60 || document.querySelector(`#${TOUCH_ID_BUTTON_ID}`)) {
+  const injectedButton = document.querySelector(`#${TOUCH_ID_BUTTON_ID}`);
+  if (attempts >= 120 || (injectedButton && isVisible(injectedButton))) {
     window.clearInterval(interval);
   }
 }, 500);
