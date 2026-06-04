@@ -179,7 +179,8 @@ pin
 Rules:
 - `pin` is sent directly to native host and stored in macOS Keychain as a generic password.
 - Chrome does not store `pin`.
-- `.p12` path can be selected through popup button `Выбрать`, which calls native macOS `NSOpenPanel`.
+- `.p12` path can be selected through popup button `Выбрать`, which calls native host command `chooseCertificate`.
+- `chooseCertificate` uses `/usr/bin/osascript` with `choose file` because `NSOpenPanel` did not visibly open when launched from Chrome Native Messaging.
 - config file stores only `iin`, `tin`, `certificatePath`, `updatedAt`.
 - config file location: `~/Library/Application Support/kz.esf.touchid/config.json`.
 - Keychain service/account: `kz.esf.touchid` / `certificate-pin`.
@@ -277,7 +278,7 @@ Completed:
 - Keychain-backed config commands added to native host;
 - popup setup form added for IIN/TIN/`.p12` path/PIN.
 - popup has a native file picker button for `.p12` path;
-- extension version bumped to display `0.1.02` (`manifest.version` is `0.1.2`, `manifest.version_name` is `0.1.02`).
+- extension version bumped to display `0.1.03` (`manifest.version` is `0.1.3`, `manifest.version_name` is `0.1.03`).
 
 Pending:
 - Reload extension in Chrome and verify setup save -> Touch ID unlock path.

@@ -1,8 +1,6 @@
 import Foundation
 import LocalAuthentication
 import Security
-import AppKit
-import UniformTypeIdentifiers
 
 struct NativeRequest: Decodable {
     let command: String?
@@ -279,16 +277,42 @@ func unlockPinAfterTouchId() throws -> NativeResponse {
 
 func chooseCertificatePath() -> NativeResponse {
     let command = "chooseCertificate"
-    let panel = NSOpenPanel()
-    panel.title = "Выберите файл ЭЦП"
-    panel.message = "Выберите .p12 файл для ИС ЭСФ"
-    panel.canChooseDirectories = false
-    panel.canChooseFiles = true
-    panel.allowsMultipleSelection = false
-    panel.allowedContentTypes = ["p12", "pfx"].compactMap { UTType(filenameExtension: $0) }
 
-    guard panel.runModal() == .OK, let url = panel.url else {
-        return NativeResponse(ok: false, command: command, message: "file-selection-cancelled", timestamp: nowIso8601())
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+    process.arguments = [
+        "-e",
+        """
+        set chosenFile to choose file with prompt "Выберите файл ЭЦП (.p12/.pfx)" of type {"p12", "pfx"}
+        POSIX path of chosenFile
+        """
+    ]
+
+    let output = Pipe()
+    let errorOutput = Pipe()
+    process.standardOutput = output
+    process.standardError = errorOutput
+
+    do {
+        try process.run()
+        process.waitUntilExit()
+    } catch {
+        return NativeResponse(ok: false, command: command, message: "file-picker-failed: \(error.localizedDescription)", timestamp: nowIso8601())
+    }
+
+    if process.terminationStatus != 0 {
+        let errorData = errorOutput.fileHandleForReading.readDataToEndOfFile()
+        let errorMessage = String(data: errorData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return NativeResponse(ok: false, command: command, message: errorMessage ?? "file-selection-cancelled", timestamp: nowIso8601())
+    }
+
+    let data = output.fileHandleForReading.readDataToEndOfFile()
+    let path = String(data: data, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+
+    guard !path.isEmpty else {
+        return NativeResponse(ok: false, command: command, message: "file-selection-empty", timestamp: nowIso8601())
     }
 
     return NativeResponse(
@@ -296,7 +320,7 @@ func chooseCertificatePath() -> NativeResponse {
         command: command,
         message: "certificate-selected",
         timestamp: nowIso8601(),
-        certificatePath: url.path
+        certificatePath: path
     )
 }
 

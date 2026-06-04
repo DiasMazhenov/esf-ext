@@ -56,6 +56,9 @@ async function handleCommand(message) {
     case 'chooseCertificate': {
       const nativeResponse = await sendNativeCommand('chooseCertificate');
       if (!nativeResponse?.ok) {
+        if (nativeResponse?.message?.includes('User canceled')) {
+          return { ok: false, error: 'Выбор файла отменён.' };
+        }
         return { ok: false, error: nativeResponse?.message || 'Файл не выбран.' };
       }
 
