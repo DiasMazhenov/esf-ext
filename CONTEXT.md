@@ -62,6 +62,7 @@ Details are in:
 /Users/diasmazhenov/vibecode/esf-ext/extension/popup.css
 /Users/diasmazhenov/vibecode/esf-ext/extension/popup.js
 /Users/diasmazhenov/vibecode/esf-ext/extension/service-worker.js
+/Users/diasmazhenov/vibecode/esf-ext/extension/open-dev-chrome.sh
 /Users/diasmazhenov/vibecode/esf-ext/native-host/Sources/main.swift
 /Users/diasmazhenov/vibecode/esf-ext/native-host/build.sh
 /Users/diasmazhenov/vibecode/esf-ext/native-host/install-host.sh
@@ -120,8 +121,10 @@ chrome-extension://bjokedaeolojcgaaanfhpofelnfgkebk/
 Chrome was launched with a temporary profile and the unpacked extension:
 
 ```bash
-open -na "Google Chrome" --args --user-data-dir=/private/tmp/esf-ext-chrome-profile --load-extension=/Users/diasmazhenov/vibecode/esf-ext/extension chrome://extensions
+/Users/diasmazhenov/vibecode/esf-ext/extension/open-dev-chrome.sh
 ```
+
+Important: this extension will not appear in the user's normal Chrome profile unless it is loaded there manually through `chrome://extensions` -> Developer mode -> Load unpacked -> `/Users/diasmazhenov/vibecode/esf-ext/extension`. For development, use the script above and check the separate temporary Chrome profile.
 
 ### Native Host Build
 
@@ -229,11 +232,12 @@ Pending:
 - Test against ESF test stand.
 
 ## Next Step
-1. In the Chrome window/profile where the unpacked extension is loaded, click the extension popup.
-2. Click “Войти”.
-3. Complete Touch ID.
-4. Verify the popup shows `Touch ID подтвержден`.
-5. If native messaging fails, re-check `chrome://extensions` shows extension ID `bjokedaeolojcgaaanfhpofelnfgkebk`.
+1. Run `/Users/diasmazhenov/vibecode/esf-ext/extension/open-dev-chrome.sh`.
+2. In that Chrome window/profile, click the extension popup.
+3. Click “Войти”.
+4. Complete Touch ID.
+5. Verify the popup shows `Touch ID подтвержден`.
+6. If native messaging fails, re-check `chrome://extensions` shows extension ID `bjokedaeolojcgaaanfhpofelnfgkebk`.
 
 ## Security Rules
 - Never store real PIN in Chrome extension storage.
