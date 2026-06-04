@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.20
+0.1.21
 ```
 
 Next verification step:
@@ -257,7 +257,7 @@ Open ESF login modal -> click floating "Войти через Touch ID" panel ->
 Latest fix:
 
 ```text
-NCALayer fallback now uses only WSS endpoints and tells the user to accept the local NCALayer certificate in Chrome when WSS fails with certificate authority errors.
+NCALayer signing from the ESF site panel now runs in page context through `page-ncalayer.js`, because extension service worker may reject NCALayer local TLS even when the ESF page can connect.
 ```
 
 ### Java/JDK
@@ -352,9 +352,11 @@ Completed:
 - manifest has explicit `content_security_policy.extension_pages.connect-src` for NCALayer WebSocket URLs;
 - `ws://` endpoints were removed because NCALayer returns invalid HTTP response on plain WebSocket;
 - if Chrome rejects the local WSS certificate, popup tells the user to open `https://127.0.0.1:13579/` and accept the certificate in the same Chrome profile;
+- `page-ncalayer.js` is injected as a page-context bridge from the content script for the ESF site button;
+- site `Войти через NCA Layer` signs inside the ESF page context, then sends the signed ticket to native host;
 - native host accepts external signed tickets through `createSessionFromSignedTicket`;
 - local debug XML snapshots are saved under Application Support for comparison and are not committed;
-- extension version bumped to display `0.1.20` (`manifest.version` is `0.1.20`, `manifest.version_name` is `0.1.20`).
+- extension version bumped to display `0.1.21` (`manifest.version` is `0.1.21`, `manifest.version_name` is `0.1.21`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.

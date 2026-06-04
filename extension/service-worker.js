@@ -215,12 +215,13 @@ async function handleCommand(message) {
       };
     }
     case 'loginViaNcaLayer': {
-      const ticketResponse = await sendNativeCommand('createAuthTicket');
-      if (!ticketResponse?.ok) {
-        return { ok: false, error: ticketResponse?.message || 'Auth ticket не получен.' };
-      }
-
-      const signedAuthTicket = await signXmlViaNcaLayer(ticketResponse.authTicketXml);
+      const signedAuthTicket = message.signedAuthTicket || await (async () => {
+        const ticketResponse = await sendNativeCommand('createAuthTicket');
+        if (!ticketResponse?.ok) {
+          throw new Error(ticketResponse?.message || 'Auth ticket не получен.');
+        }
+        return signXmlViaNcaLayer(ticketResponse.authTicketXml);
+      })();
       const nativeResponse = await sendNativeCommand('createSessionFromSignedTicket', { signedAuthTicket });
       if (!nativeResponse?.ok) {
         return { ok: false, error: nativeResponse?.message || 'Сессия через NCALayer не создана.' };
