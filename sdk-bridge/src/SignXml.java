@@ -4,12 +4,19 @@ import kz.gov.pki.provider.utils.XMLUtil;
 import kz.gov.pki.provider.utils.model.SigningEntity;
 import ru.ussgroup.security.trusty.TrustyUtils;
 
+import javax.security.auth.x500.X500Principal;
 import javax.security.auth.x500.X500PrivateCredential;
 import java.nio.charset.StandardCharsets;
 import java.security.Security;
 import java.util.Collections;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public final class SignXml {
+    private static final Pattern IIN_PATTERN = Pattern.compile("<iin>(\\d{12})</iin>");
+    private static final Pattern SIGNATURE_METHOD_PATTERN = Pattern.compile("<ds:SignatureMethod\\s+Algorithm=\"([^\"]+)\"");
+    private static final String REQUIRED_GOST_512 = "gostr34102015-gostr34112015-512";
+
     private SignXml() {}
 
     public static void main(String[] args) throws Exception {
@@ -38,6 +45,8 @@ public final class SignXml {
         }
 
         X500PrivateCredential credential = TrustyUtils.loadCredentialFromFile(certificatePath, certificatePin);
+        validateIin(xml, credential);
+
         SigningEntity signingEntity = new SigningEntity(
             credential.getPrivateKey(),
             Collections.singletonList(credential.getCertificate())
@@ -48,7 +57,42 @@ public final class SignXml {
             xml,
             Security.getProvider(KalkanProvider.PROVIDER_NAME)
         );
+        validateSignatureMethod(signedXml);
 
         System.out.print(signedXml);
+    }
+
+    private static void validateIin(String xml, X500PrivateCredential credential) {
+        Matcher matcher = IIN_PATTERN.matcher(xml);
+        if (!matcher.find()) {
+            return;
+        }
+
+        String iin = matcher.group(1);
+        X500Principal principal = credential.getCertificate().getSubjectX500Principal();
+        String subject = String.join(
+            " ",
+            principal.getName(),
+            principal.getName(X500Principal.RFC1779),
+            principal.getName(X500Principal.CANONICAL)
+        );
+
+        if (!subject.contains(iin)) {
+            throw new IllegalArgumentException("certificate-iin-mismatch: selected certificate does not match configured IIN");
+        }
+    }
+
+    private static void validateSignatureMethod(String signedXml) {
+        Matcher matcher = SIGNATURE_METHOD_PATTERN.matcher(signedXml);
+        if (!matcher.find()) {
+            throw new IllegalArgumentException("signature-method-not-found");
+        }
+
+        String algorithm = matcher.group(1);
+        if (!algorithm.contains(REQUIRED_GOST_512)) {
+            throw new IllegalArgumentException(
+                "unsupported-signature-method: " + algorithm + ". Select a GOST512 NCA certificate, not RSA."
+            );
+        }
     }
 }

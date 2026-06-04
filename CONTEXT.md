@@ -237,7 +237,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.13
+0.1.14
 ```
 
 Next verification step:
@@ -249,7 +249,7 @@ Open ESF login modal -> click floating "Войти через Touch ID" panel ->
 Latest fix:
 
 ```text
-SessionService.createSessionSigned now sends signedAuthTicket in CDATA, matching SDK SoapUI samples. XML-escaping the signed XML caused ESF SOAP 500 SecurityError.
+SignXml now rejects RSA signatures and IIN/certificate mismatch before sending to ESF. SDK SoapUI createSessionSigned samples use GOST512 signatures; RSA signed tickets can cause ESF SOAP 500 SecurityError.
 ```
 
 ### Java/JDK
@@ -333,11 +333,12 @@ Completed:
 - native host has SOAP `createAuthTicket` command for `AuthService.createAuthTicket` on `https://esf.gov.kz:8443/esf-web/ws/api1/AuthService`.
 - native host creates ESF signed sessions through `createAuthTicket -> Touch ID -> signXml -> createSessionSigned`;
 - `signedAuthTicket` is sent as CDATA, matching SDK SoapUI samples;
-- extension version bumped to display `0.1.13` (`manifest.version` is `0.1.13`, `manifest.version_name` is `0.1.13`).
+- Java `SignXml` validates that the ticket IIN matches the selected certificate and that the XML signature method is GOST512, not RSA;
+- extension version bumped to display `0.1.14` (`manifest.version` is `0.1.14`, `manifest.version_name` is `0.1.14`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
-- If ESF still returns SOAP error, inspect signed ticket format/certificate role.
+- If Java bridge returns `unsupported-signature-method`, choose a GOST512 NCA `.p12` certificate instead of RSA.
 - Implement SOAP calls for `currentSessionStatus`, `closeSession`.
 - Test against ESF test stand.
 
