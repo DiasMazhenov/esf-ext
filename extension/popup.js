@@ -6,12 +6,14 @@ const iinInput = document.querySelector('#iinInput');
 const tinInput = document.querySelector('#tinInput');
 const certificatePathInput = document.querySelector('#certificatePathInput');
 const pinInput = document.querySelector('#pinInput');
+const chooseCertificateButton = document.querySelector('#chooseCertificateButton');
 const saveConfigButton = document.querySelector('#saveConfigButton');
 const loginButton = document.querySelector('#loginButton');
 const checkButton = document.querySelector('#checkButton');
 const logoutButton = document.querySelector('#logoutButton');
 
 const setBusy = (busy) => {
+  chooseCertificateButton.disabled = busy;
   saveConfigButton.disabled = busy;
   loginButton.disabled = busy;
   checkButton.disabled = busy;
@@ -59,6 +61,21 @@ configForm.addEventListener('submit', (event) => {
   }).then(() => {
     pinInput.value = '';
   });
+});
+
+chooseCertificateButton.addEventListener('click', async () => {
+  setBusy(true);
+  try {
+    const response = await chrome.runtime.sendMessage({ command: 'chooseCertificate' });
+    if (response?.ok && response.certificatePath) {
+      certificatePathInput.value = response.certificatePath;
+    }
+    render(response);
+  } catch (error) {
+    render({ ok: false, error: error.message });
+  } finally {
+    setBusy(false);
+  }
 });
 
 loginButton.addEventListener('click', () => sendCommand('login'));

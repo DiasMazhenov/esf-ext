@@ -1,6 +1,8 @@
 import Foundation
 import LocalAuthentication
 import Security
+import AppKit
+import UniformTypeIdentifiers
 
 struct NativeRequest: Decodable {
     let command: String?
@@ -275,6 +277,29 @@ func unlockPinAfterTouchId() throws -> NativeResponse {
     return responseFromConfig(command: command, message: "pin-unlocked", config: config, configured: true)
 }
 
+func chooseCertificatePath() -> NativeResponse {
+    let command = "chooseCertificate"
+    let panel = NSOpenPanel()
+    panel.title = "Выберите файл ЭЦП"
+    panel.message = "Выберите .p12 файл для ИС ЭСФ"
+    panel.canChooseDirectories = false
+    panel.canChooseFiles = true
+    panel.allowsMultipleSelection = false
+    panel.allowedContentTypes = ["p12", "pfx"].compactMap { UTType(filenameExtension: $0) }
+
+    guard panel.runModal() == .OK, let url = panel.url else {
+        return NativeResponse(ok: false, command: command, message: "file-selection-cancelled", timestamp: nowIso8601())
+    }
+
+    return NativeResponse(
+        ok: true,
+        command: command,
+        message: "certificate-selected",
+        timestamp: nowIso8601(),
+        certificatePath: url.path
+    )
+}
+
 func handle(_ data: Data) throws -> NativeResponse {
     let request = try JSONDecoder().decode(NativeRequest.self, from: data)
     let command = request.command ?? "unknown"
@@ -290,6 +315,8 @@ func handle(_ data: Data) throws -> NativeResponse {
         return try configStatus()
     case "unlockPin":
         return try unlockPinAfterTouchId()
+    case "chooseCertificate":
+        return chooseCertificatePath()
     default:
         return NativeResponse(ok: false, command: command, message: "unsupported command", timestamp: nowIso8601())
     }

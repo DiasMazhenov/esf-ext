@@ -6,6 +6,7 @@
 - GitHub repo: `https://github.com/DiasMazhenov/esf-ext` (private).
 - Цель: Chrome extension + macOS native helper для удобного входа в ИС ЭСФ через официальную ЭЦП, где Touch ID только локально разрешает использование ключа/PIN.
 - После каждого завершённого обновления делать commit и push в GitHub.
+- После каждого изменения поднимать номер версии в формате display `0.1.02`; в Chrome manifest использовать `version_name`, потому что `version: "0.1.02"` невалиден из-за leading zero.
 
 ## Important Constraint
 Touch ID не заменяет ЭЦП юридически или технически. ESF API остаётся certificate-based. Touch ID используется как локальный gate перед доступом к Keychain/`.p12`/подписи.
@@ -163,6 +164,7 @@ Native host now supports:
 saveConfig
 configStatus
 unlockPin
+chooseCertificate
 ```
 
 Popup has fields for:
@@ -177,6 +179,7 @@ pin
 Rules:
 - `pin` is sent directly to native host and stored in macOS Keychain as a generic password.
 - Chrome does not store `pin`.
+- `.p12` path can be selected through popup button `Выбрать`, which calls native macOS `NSOpenPanel`.
 - config file stores only `iin`, `tin`, `certificatePath`, `updatedAt`.
 - config file location: `~/Library/Application Support/kz.esf.touchid/config.json`.
 - Keychain service/account: `kz.esf.touchid` / `certificate-pin`.
@@ -273,6 +276,8 @@ Completed:
 - popup login reached Touch ID successfully;
 - Keychain-backed config commands added to native host;
 - popup setup form added for IIN/TIN/`.p12` path/PIN.
+- popup has a native file picker button for `.p12` path;
+- extension version bumped to display `0.1.02` (`manifest.version` is `0.1.2`, `manifest.version_name` is `0.1.02`).
 
 Pending:
 - Reload extension in Chrome and verify setup save -> Touch ID unlock path.
@@ -286,7 +291,7 @@ Pending:
 3. Fill:
    - ИИН
    - TIN / БИН
-   - full path to `.p12`
+   - click `Выбрать` for `.p12` or paste full path
    - PIN ЭЦП
 4. Click `Сохранить настройку`.
 5. Click `Войти`.

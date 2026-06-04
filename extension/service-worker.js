@@ -53,6 +53,20 @@ async function handleCommand(message) {
         detail: 'PIN сохранён в macOS Keychain. В Chrome он не хранится.'
       };
     }
+    case 'chooseCertificate': {
+      const nativeResponse = await sendNativeCommand('chooseCertificate');
+      if (!nativeResponse?.ok) {
+        return { ok: false, error: nativeResponse?.message || 'Файл не выбран.' };
+      }
+
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Файл выбран',
+        detail: nativeResponse.certificatePath,
+        certificatePath: nativeResponse.certificatePath
+      };
+    }
     case 'login': {
       const nativeResponse = await sendNativeCommand('unlockPin');
       if (!nativeResponse?.ok) {

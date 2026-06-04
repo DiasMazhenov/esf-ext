@@ -120,6 +120,17 @@ input:focus {
   outline: 2px solid rgba(15, 118, 110, 0.16);
 }
 
+.path-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px;
+}
+
+.choose-button {
+  min-width: 84px;
+  padding-inline: 10px;
+}
+
 .label {
   display: block;
   margin-bottom: 4px;
