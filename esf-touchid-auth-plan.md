@@ -12,8 +12,10 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.05`. Verify: manifest `version_name` = `0.1.05`, техническая Chrome `version` = `0.1.5`.
+- [x] Ввести версионирование display-формата `0.1.06`. Verify: manifest `version_name` = `0.1.06`, техническая Chrome `version` = `0.1.6`.
+- [x] Добавить кнопку `Войти через Touch ID` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [ ] Проверить popup setup/login в Chrome: save config -> click “Войти” -> Touch ID -> `PIN открыт через Touch ID`. Verify: popup получает успешный ответ от native host.
+- [ ] Проверить кнопку на сайте ИС ЭСФ: открыть модалку входа -> увидеть `Войти через Touch ID` -> получить текущий native login status.
 - [x] Подключить SDK signing: загрузка `.p12`, PIN из Keychain, подпись auth ticket/XML. Verify: Java bridge smoke test returns `sign xml ok`; native host has `signXml`.
 - [ ] Подключить SOAP `AuthService.createAuthTicket` и передавать результат в native `signXml`. Verify: получаем signed auth ticket для текущего ИИН.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.
