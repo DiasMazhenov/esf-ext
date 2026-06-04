@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ESF Auth</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">ИС ЭСФ</p>
+          <h1>Touch ID Auth</h1>
+        </div>
+        <span id="statusBadge" class="badge badge-idle">Idle</span>
+      </header>
+
+      <section class="status-panel" aria-live="polite">
+        <span class="label">Сессия</span>
+        <strong id="sessionStatus">Не проверена</strong>
+        <p id="statusDetail">Нажмите вход, чтобы начать авторизацию через локальный helper.</p>
+      </section>
+
+      <div class="actions">
+        <button id="loginButton" type="button">Войти</button>
+        <button id="checkButton" type="button" class="secondary">Проверить</button>
+        <button id="logoutButton" type="button" class="secondary danger">Закрыть</button>
+      </div>
+    </main>
+    <script src="popup.js"></script>
+  </body>
+</html>

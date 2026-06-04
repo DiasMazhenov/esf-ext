@@ -1,0 +1,15 @@
+.DS_Store
+
+# Build outputs
+native-host/bin/
+sdk-bridge/bin/
+
+# Local/private certificate material
+*.p12
+*.pfx
+*.pem
+*.key
+
+# Local environment
+.env
+.env.*
