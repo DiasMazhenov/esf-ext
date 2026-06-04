@@ -12,7 +12,7 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.16`. Verify: manifest `version_name` = `0.1.16`, техническая Chrome `version` = `0.1.16`.
+- [x] Ввести версионирование display-формата `0.1.17`. Verify: manifest `version_name` = `0.1.17`, техническая Chrome `version` = `0.1.17`.
 - [x] Добавить кнопку `Войти через Touch ID` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [x] Исправить content script match для сайта ИС ЭСФ. Verify: `matches` uses `https://esf.gov.kz/*`, not port-specific pattern.
 - [x] Усилить injection кнопки в модалку ИС ЭСФ. Verify: content script finds existing `Войти с помощью ЭЦП` button globally and injects into its parent.
@@ -30,6 +30,7 @@
 - [x] Добавить локальную проверку сертификата перед SOAP: ИИН в ticket должен совпадать с сертификатом, signature method должен быть GOST512. Verify: RSA sample fails locally with clear error.
 - [x] Исправить HTTP `SOAPAction` для `createSessionSigned` на пустой, как в WSDL/SDK SoapUI, и добавить diagnostics в SOAP error. Verify: Swift build passes.
 - [x] Добавить локальную XMLDSig verify-проверку после подписи и sanitized certificate diagnostics в native error. Verify: Java bridge and Swift build pass.
+- [x] Показать текущую версию в popup рядом с названием и убрать SLF4J noise из diagnostics. Verify: JS syntax and Swift build pass.
 - [ ] Проверить полный сайтовый flow: floating panel -> Touch ID -> signed auth ticket -> `sessionId`. Verify: ESF session is created or SOAP error is shown clearly.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.
 - [ ] Подключить тестовый стенд `test3.esf.kgd.gov.kz:8443`. Verify: создается сессия на тестовом стенде или получаем понятную ошибку доступа/сертификата.

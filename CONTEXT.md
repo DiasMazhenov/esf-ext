@@ -237,7 +237,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.16
+0.1.17
 ```
 
 Next verification step:
@@ -249,7 +249,7 @@ Open ESF login modal -> click floating "Войти через Touch ID" panel ->
 Latest fix:
 
 ```text
-SignXml now runs local XMLDSig verification after signing and passes sanitized diagnostics through native SOAP errors.
+Popup shows the current extension version next to the title. Native diagnostics filter SLF4J noise.
 ```
 
 ### Java/JDK
@@ -336,7 +336,9 @@ Completed:
 - Java `SignXml` validates that the ticket IIN matches the selected certificate and that the XML signature method is GOST512, not RSA;
 - `createSessionSigned` sends empty `SOAPAction`, matching SDK WSDL/SoapUI;
 - Java `SignXml` verifies the generated XML signature locally and emits sanitized diagnostics: `localVerify`, `signatureMethod`, certificate subject/issuer/notAfter;
-- extension version bumped to display `0.1.16` (`manifest.version` is `0.1.16`, `manifest.version_name` is `0.1.16`).
+- popup header shows `version_name` next to `Touch ID Auth`;
+- native diagnostics filter SLF4J noise before returning errors to Chrome;
+- extension version bumped to display `0.1.17` (`manifest.version` is `0.1.17`, `manifest.version_name` is `0.1.17`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.

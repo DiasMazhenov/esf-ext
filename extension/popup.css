@@ -51,6 +51,19 @@ h1 {
   line-height: 1.2;
 }
 
+.title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.version-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .badge {
   min-width: 72px;
   padding: 5px 8px;

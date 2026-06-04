@@ -1,4 +1,5 @@
 const statusBadge = document.querySelector('#statusBadge');
+const versionLabel = document.querySelector('#versionLabel');
 const sessionStatus = document.querySelector('#sessionStatus');
 const statusDetail = document.querySelector('#statusDetail');
 const configForm = document.querySelector('#configForm');
@@ -10,6 +11,8 @@ const saveConfigButton = document.querySelector('#saveConfigButton');
 const loginButton = document.querySelector('#loginButton');
 const checkButton = document.querySelector('#checkButton');
 const logoutButton = document.querySelector('#logoutButton');
+
+versionLabel.textContent = `v${chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version}`;
 
 const setBusy = (busy) => {
   chooseCertificateButton.disabled = busy;

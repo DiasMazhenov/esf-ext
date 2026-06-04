@@ -267,6 +267,14 @@ func extractAttribute(_ elementName: String, _ attributeName: String, from xml: 
     return String(xml[valueRange])
 }
 
+func compactDiagnostics(_ value: String) -> String {
+    value
+        .split(whereSeparator: \.isNewline)
+        .map(String.init)
+        .filter { !$0.hasPrefix("SLF4J:") }
+        .joined(separator: "; ")
+}
+
 func postSoap(url: URL, soapAction: String, envelope: String) throws -> String {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
@@ -475,8 +483,9 @@ func runSignXml(xml: String, certificatePath: String, pin: String) throws -> Sig
     let errorData = errorOutput.fileHandleForReading.readDataToEndOfFile()
     let signedXml = String(data: signedData, encoding: .utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-    let diagnostics = String(data: errorData, encoding: .utf8)?
+    let diagnostics = compactDiagnostics(String(data: errorData, encoding: .utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    )
 
     guard process.terminationStatus == 0, !signedXml.isEmpty else {
         throw NativeHostError.invalidConfig(diagnostics.isEmpty ? "sign-xml failed" : diagnostics)
