@@ -2,9 +2,7 @@ const SESSION_KEY = 'esfSession';
 const NATIVE_HOST = 'kz.esf.touchid';
 const NCA_LAYER_ENDPOINTS = [
   'wss://127.0.0.1:13579/',
-  'wss://localhost:13579/',
-  'ws://127.0.0.1:13579/',
-  'ws://localhost:13579/'
+  'wss://localhost:13579/'
 ];
 
 const readSession = async () => {
@@ -73,7 +71,9 @@ const sendNcaLayerRequest = (request) => new Promise((resolve, reject) => {
   const tryNextEndpoint = () => {
     const endpoint = endpoints.shift();
     if (!endpoint) {
-      finish(reject, new Error(`NCALayer не отвечает из расширения. Проверенные адреса: ${failures.join('; ')}`));
+      finish(reject, new Error(
+        `Chrome не доверяет локальному сертификату NCALayer. Откройте https://127.0.0.1:13579/ в этом же Chrome, примите сертификат, затем повторите. Проверенные адреса: ${failures.join('; ')}`
+      ));
       return;
     }
 

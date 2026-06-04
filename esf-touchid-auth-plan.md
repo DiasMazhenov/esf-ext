@@ -12,7 +12,7 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.19`. Verify: manifest `version_name` = `0.1.19`, техническая Chrome `version` = `0.1.19`.
+- [x] Ввести версионирование display-формата `0.1.20`. Verify: manifest `version_name` = `0.1.20`, техническая Chrome `version` = `0.1.20`.
 - [x] Добавить кнопку `Войти через Touch ID` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [x] Исправить content script match для сайта ИС ЭСФ. Verify: `matches` uses `https://esf.gov.kz/*`, not port-specific pattern.
 - [x] Усилить injection кнопки в модалку ИС ЭСФ. Verify: content script finds existing `Войти с помощью ЭЦП` button globally and injects into its parent.
@@ -33,6 +33,7 @@
 - [x] Показать текущую версию в popup рядом с названием и убрать SLF4J noise из diagnostics. Verify: JS syntax and Swift build pass.
 - [x] Добавить экспериментальный fallback через NCALayer `signXml` без удаления SDK bridge. Verify: JS syntax and Swift build pass.
 - [x] Исправить доступ расширения к NCALayer: добавить localhost endpoints и CSP `connect-src`. Verify: manifest parse and JS syntax pass.
+- [x] Уточнить NCALayer WSS certificate error: убрать `ws://` endpoints и показать инструкцию принять `https://127.0.0.1:13579/` сертификат в Chrome. Verify: manifest parse and JS syntax pass.
 - [ ] Сравнить debug XML: SDK signed ticket vs NCALayer signed ticket. Verify: есть локальные debug-файлы в Application Support.
 - [ ] Проверить полный сайтовый flow: floating panel -> Touch ID -> signed auth ticket -> `sessionId`. Verify: ESF session is created or SOAP error is shown clearly.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.
