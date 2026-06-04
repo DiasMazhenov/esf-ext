@@ -171,7 +171,6 @@ Popup has fields for:
 
 ```text
 iin
-tin
 certificatePath
 pin
 ```
@@ -181,7 +180,8 @@ Rules:
 - Chrome does not store `pin`.
 - `.p12` path can be selected through popup button `Выбрать`, which calls native host command `chooseCertificate`.
 - `chooseCertificate` uses `/usr/bin/osascript` with `choose file` because `NSOpenPanel` did not visibly open when launched from Chrome Native Messaging.
-- config file stores only `iin`, `tin`, `certificatePath`, `updatedAt`.
+- config file stores only `iin`, derived `tin`, `certificatePath`, `updatedAt`.
+- For individual users, `tin` is derived from `iin`; the popup does not ask for BIN separately.
 - config file location: `~/Library/Application Support/kz.esf.touchid/config.json`.
 - Keychain service/account: `kz.esf.touchid` / `certificate-pin`.
 
@@ -276,9 +276,9 @@ Completed:
 - Chrome launched with unpacked extension via a temporary profile;
 - popup login reached Touch ID successfully;
 - Keychain-backed config commands added to native host;
-- popup setup form added for IIN/TIN/`.p12` path/PIN.
+- popup setup form added for IIN/`.p12` path/PIN.
 - popup has a native file picker button for `.p12` path;
-- extension version bumped to display `0.1.03` (`manifest.version` is `0.1.3`, `manifest.version_name` is `0.1.03`).
+- extension version bumped to display `0.1.04` (`manifest.version` is `0.1.4`, `manifest.version_name` is `0.1.04`).
 
 Pending:
 - Reload extension in Chrome and verify setup save -> Touch ID unlock path.
@@ -291,7 +291,6 @@ Pending:
 2. Open the extension popup.
 3. Fill:
    - ИИН
-   - TIN / БИН
    - click `Выбрать` for `.p12` or paste full path
    - PIN ЭЦП
 4. Click `Сохранить настройку`.

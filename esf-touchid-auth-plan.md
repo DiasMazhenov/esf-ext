@@ -9,10 +9,10 @@
 - [x] Создать macOS native host в `/Users/diasmazhenov/vibecode/esf-ext/native-host`. Verify: extension получает ответ `ping/pong` через Native Messaging.
 - [x] Добавить Touch ID gate в native host через macOS LocalAuthentication/Keychain. Verify: без Touch ID секрет не возвращается, после Touch ID доступ разрешен.
 - [x] Зарегистрировать Chrome Native Messaging host для стабильного dev extension ID `bjokedaeolojcgaaanfhpofelnfgkebk`. Verify: `allowed_origins` указывает на этот ID.
-- [x] Добавить настройку ЭЦП: ИИН, TIN, путь к `.p12`, PIN в macOS Keychain. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
+- [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.03`. Verify: manifest `version_name` = `0.1.03`, техническая Chrome `version` = `0.1.3`.
+- [x] Ввести версионирование display-формата `0.1.04`. Verify: manifest `version_name` = `0.1.04`, техническая Chrome `version` = `0.1.4`.
 - [ ] Проверить popup setup/login в Chrome: save config -> click “Войти” -> Touch ID -> `PIN открыт через Touch ID`. Verify: popup получает успешный ответ от native host.
 - [ ] Подключить SDK signing: загрузка `.p12`, PIN из Keychain, подпись auth ticket/XML. Verify: на тестовом ключе SDK возвращает подпись и сертификат.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.

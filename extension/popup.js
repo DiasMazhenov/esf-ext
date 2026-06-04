@@ -3,7 +3,6 @@ const sessionStatus = document.querySelector('#sessionStatus');
 const statusDetail = document.querySelector('#statusDetail');
 const configForm = document.querySelector('#configForm');
 const iinInput = document.querySelector('#iinInput');
-const tinInput = document.querySelector('#tinInput');
 const certificatePathInput = document.querySelector('#certificatePathInput');
 const pinInput = document.querySelector('#pinInput');
 const chooseCertificateButton = document.querySelector('#chooseCertificateButton');
@@ -55,7 +54,6 @@ configForm.addEventListener('submit', (event) => {
   event.preventDefault();
   sendCommand('saveConfig', {
     iin: iinInput.value,
-    tin: tinInput.value,
     certificatePath: certificatePathInput.value,
     pin: pinInput.value
   }).then(() => {

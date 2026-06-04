@@ -37,7 +37,6 @@ async function handleCommand(message) {
     case 'saveConfig': {
       const nativeResponse = await sendNativeCommand('saveConfig', {
         iin: message.iin,
-        tin: message.tin,
         certificatePath: message.certificatePath,
         pin: message.pin
       });

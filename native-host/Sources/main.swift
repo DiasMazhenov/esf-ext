@@ -236,7 +236,9 @@ func evaluateTouchId() -> NativeResponse {
 func saveEsfConfig(_ request: NativeRequest) throws -> NativeResponse {
     let command = "saveConfig"
     let iin = try normalizedRequired(request.iin, name: "iin")
-    let tin = try normalizedRequired(request.tin, name: "tin")
+    let tin = request.tin?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        ? try normalizedRequired(request.tin, name: "tin")
+        : iin
     let certificatePath = try normalizedRequired(request.certificatePath, name: "certificatePath")
     let pin = try normalizedRequired(request.pin, name: "pin")
 
