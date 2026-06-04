@@ -12,9 +12,10 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.07`. Verify: manifest `version_name` = `0.1.07`, техническая Chrome `version` = `0.1.7`.
+- [x] Ввести версионирование display-формата `0.1.08`. Verify: manifest `version_name` = `0.1.08`, техническая Chrome `version` = `0.1.8`.
 - [x] Добавить кнопку `Войти через Touch ID` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [x] Исправить content script match для сайта ИС ЭСФ. Verify: `matches` uses `https://esf.gov.kz/*`, not port-specific pattern.
+- [x] Усилить injection кнопки в модалку ИС ЭСФ. Verify: content script finds existing `Войти с помощью ЭЦП` button globally and injects into its parent.
 - [ ] Проверить popup setup/login в Chrome: save config -> click “Войти” -> Touch ID -> `PIN открыт через Touch ID`. Verify: popup получает успешный ответ от native host.
 - [ ] Проверить кнопку на сайте ИС ЭСФ: открыть модалку входа -> увидеть `Войти через Touch ID` -> получить текущий native login status.
 - [x] Подключить SDK signing: загрузка `.p12`, PIN из Keychain, подпись auth ticket/XML. Verify: Java bridge smoke test returns `sign xml ok`; native host has `signXml`.

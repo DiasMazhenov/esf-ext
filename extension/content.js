@@ -1,15 +1,34 @@
 const TOUCH_ID_BUTTON_ID = 'esf-touchid-login-button';
 const STATUS_ID = 'esf-touchid-login-status';
 
+const normalizeText = (value) => (value || '').replace(/\s+/g, ' ').trim();
+
+const findByText = (selector, text) => {
+  const target = normalizeText(text);
+  return [...document.querySelectorAll(selector)].find((element) => normalizeText(element.textContent).includes(target)) || null;
+};
+
 const findAuthModal = () => {
   const dialogs = [...document.querySelectorAll('[role="dialog"], .ReactModal__Content')];
-  return dialogs.find((dialog) => dialog.textContent?.includes('Способ авторизации')) || null;
+  const modal = dialogs.find((dialog) => normalizeText(dialog.textContent).includes('Способ авторизации'));
+  if (modal) {
+    return modal;
+  }
+
+  const header = findByText('div, h1, h2, h3', 'Способ авторизации');
+  return header?.closest('[role="dialog"], .ReactModal__Content') || null;
 };
 
 const findButtonContainer = (modal) => {
-  const buttons = [...modal.querySelectorAll('button')];
-  const ecpButton = buttons.find((button) => button.textContent?.trim() === 'Войти с помощью ЭЦП');
-  return ecpButton?.parentElement || modal.querySelector('[class*="SelectMethodModal_container"]') || null;
+  const root = modal || document;
+  const buttons = [...root.querySelectorAll('button')];
+  const ecpButton = buttons.find((button) => normalizeText(button.textContent).includes('Войти с помощью ЭЦП'));
+  if (ecpButton?.parentElement) {
+    return ecpButton.parentElement;
+  }
+
+  const globalEcpButton = findByText('button', 'Войти с помощью ЭЦП');
+  return globalEcpButton?.parentElement || root.querySelector('[class*="SelectMethodModal_container"]') || null;
 };
 
 const setStatus = (container, message, type = 'idle') => {
@@ -26,12 +45,8 @@ const setStatus = (container, message, type = 'idle') => {
 
 const injectTouchIdButton = () => {
   const modal = findAuthModal();
-  if (!modal || modal.querySelector(`#${TOUCH_ID_BUTTON_ID}`)) {
-    return;
-  }
-
   const container = findButtonContainer(modal);
-  if (!container) {
+  if (!container || container.querySelector(`#${TOUCH_ID_BUTTON_ID}`)) {
     return;
   }
 
@@ -40,6 +55,11 @@ const injectTouchIdButton = () => {
   button.type = 'button';
   button.className = 'esf-touchid-button';
   button.textContent = 'Войти через Touch ID';
+
+  const sampleButton = findByText('button', 'Войти с помощью ЭЦП');
+  if (sampleButton?.className) {
+    button.className = `${sampleButton.className} esf-touchid-button`;
+  }
 
   button.addEventListener('click', async () => {
     button.disabled = true;
@@ -66,3 +86,12 @@ const observer = new MutationObserver(injectTouchIdButton);
 observer.observe(document.documentElement, { childList: true, subtree: true });
 console.info('[ESF Touch ID Auth] Content script loaded');
 injectTouchIdButton();
+
+let attempts = 0;
+const interval = window.setInterval(() => {
+  injectTouchIdButton();
+  attempts += 1;
+  if (attempts >= 60 || document.querySelector(`#${TOUCH_ID_BUTTON_ID}`)) {
+    window.clearInterval(interval);
+  }
+}, 500);

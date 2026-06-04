@@ -1,4 +1,4 @@
-#esf-touchid-login-button.esf-touchid-button {
+#esf-touchid-login-button {
   width: 100%;
   min-height: 44px;
   border: 0;
@@ -12,11 +12,11 @@
   font-weight: 700;
 }
 
-#esf-touchid-login-button.esf-touchid-button:hover {
+#esf-touchid-login-button:hover {
   background: #115e59;
 }
 
-#esf-touchid-login-button.esf-touchid-button:disabled {
+#esf-touchid-login-button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
 }
