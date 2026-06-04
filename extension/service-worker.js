@@ -69,6 +69,20 @@ async function handleCommand(message) {
         certificatePath: nativeResponse.certificatePath
       };
     }
+    case 'createAuthTicket': {
+      const nativeResponse = await sendNativeCommand('createAuthTicket');
+      if (!nativeResponse?.ok) {
+        return { ok: false, error: nativeResponse?.message || 'Auth ticket не получен.' };
+      }
+
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Auth ticket получен',
+        detail: 'Следующий шаг: подписать auth ticket.',
+        authTicketXml: nativeResponse.authTicketXml
+      };
+    }
     case 'signXml': {
       const nativeResponse = await sendNativeCommand('signXml', { xml: message.xml });
       if (!nativeResponse?.ok) {

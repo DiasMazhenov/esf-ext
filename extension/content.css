@@ -2,7 +2,7 @@
   position: fixed;
   z-index: 2147483647;
   left: 50%;
-  bottom: 24px;
+  bottom: 124px;
   width: min(560px, calc(100vw - 48px));
   transform: translateX(-50%);
   border-radius: 12px;

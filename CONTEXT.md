@@ -167,6 +167,7 @@ saveConfig
 configStatus
 unlockPin
 chooseCertificate
+createAuthTicket
 signXml
 ```
 
@@ -289,13 +290,15 @@ Completed:
 - content script injects `Войти через Touch ID` into the ESF web login method modal;
 - content script match uses `https://esf.gov.kz/*`; do not include `:8443` in Chrome match patterns.
 - content script no longer injects inside the React modal. It shows a fixed floating Touch ID panel above the page when body text contains `Способ авторизации` and `Войти с помощью ЭЦП`.
-- extension version bumped to display `0.1.10` (`manifest.version` is `0.1.10`, `manifest.version_name` is `0.1.10`).
+- floating Touch ID panel is positioned 100px higher than before (`bottom: 124px`).
+- native host has SOAP `createAuthTicket` command for `AuthService.createAuthTicket` on `https://esf.gov.kz:8443/esf-web/ws/api1/AuthService`.
+- extension version bumped to display `0.1.11` (`manifest.version` is `0.1.11`, `manifest.version_name` is `0.1.11`).
 
 Pending:
 - Reload extension in Chrome and verify setup save -> Touch ID unlock path.
 - Verify content script button appears in ESF login modal.
-- Implement SOAP `AuthService.createAuthTicket`.
-- Implement SOAP calls for `createAuthTicket`, `createSessionSigned`, `currentSessionStatus`, `closeSession`.
+- Verify `createAuthTicket` against ESF endpoint with current config.
+- Implement SOAP calls for `createSessionSigned`, `currentSessionStatus`, `closeSession`.
 - Test against ESF test stand.
 
 ## Next Step

@@ -21,6 +21,7 @@ struct NativeResponse: Encodable {
     let tin: String?
     let certificatePath: String?
     let signedXml: String?
+    let authTicketXml: String?
 
     init(
         ok: Bool,
@@ -31,7 +32,8 @@ struct NativeResponse: Encodable {
         iin: String? = nil,
         tin: String? = nil,
         certificatePath: String? = nil,
-        signedXml: String? = nil
+        signedXml: String? = nil,
+        authTicketXml: String? = nil
     ) {
         self.ok = ok
         self.command = command
@@ -42,6 +44,7 @@ struct NativeResponse: Encodable {
         self.tin = tin
         self.certificatePath = certificatePath
         self.signedXml = signedXml
+        self.authTicketXml = authTicketXml
     }
 }
 
@@ -62,6 +65,7 @@ enum NativeHostError: Error {
 let keychainService = "kz.esf.touchid"
 let pinAccount = "certificate-pin"
 let signXmlPath = "/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/bin/sign-xml"
+let esfWebUrl = "https://esf.gov.kz:8443/esf-web"
 
 func appSupportDir(create: Bool) throws -> URL {
     let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -204,6 +208,73 @@ func normalizedRequired(_ value: String?, name: String) throws -> String {
     return trimmed
 }
 
+func xmlEscape(_ value: String) -> String {
+    value
+        .replacingOccurrences(of: "&", with: "&amp;")
+        .replacingOccurrences(of: "<", with: "&lt;")
+        .replacingOccurrences(of: ">", with: "&gt;")
+        .replacingOccurrences(of: "\"", with: "&quot;")
+        .replacingOccurrences(of: "'", with: "&apos;")
+}
+
+func xmlUnescape(_ value: String) -> String {
+    value
+        .replacingOccurrences(of: "&lt;", with: "<")
+        .replacingOccurrences(of: "&gt;", with: ">")
+        .replacingOccurrences(of: "&quot;", with: "\"")
+        .replacingOccurrences(of: "&apos;", with: "'")
+        .replacingOccurrences(of: "&amp;", with: "&")
+}
+
+func extractXmlElement(_ name: String, from xml: String) -> String? {
+    let pattern = "<(?:[A-Za-z0-9_]+:)?\(name)\\b[^>]*>([\\s\\S]*?)</(?:[A-Za-z0-9_]+:)?\(name)>"
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        return nil
+    }
+    let range = NSRange(xml.startIndex..<xml.endIndex, in: xml)
+    guard let match = regex.firstMatch(in: xml, range: range),
+          let valueRange = Range(match.range(at: 1), in: xml) else {
+        return nil
+    }
+    return xmlUnescape(String(xml[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines))
+}
+
+func postSoap(url: URL, soapAction: String, envelope: String) throws -> String {
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.timeoutInterval = 30
+    request.setValue("text/xml; charset=utf-8", forHTTPHeaderField: "Content-Type")
+    request.setValue(soapAction, forHTTPHeaderField: "SOAPAction")
+    request.httpBody = Data(envelope.utf8)
+
+    let semaphore = DispatchSemaphore(value: 0)
+    var result: Result<String, Error>?
+
+    URLSession.shared.dataTask(with: request) { data, response, error in
+        defer { semaphore.signal() }
+        if let error {
+            result = .failure(error)
+            return
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            result = .failure(NativeHostError.invalidConfig("missing HTTP response"))
+            return
+        }
+
+        let body = String(data: data ?? Data(), encoding: .utf8) ?? ""
+        guard (200..<300).contains(httpResponse.statusCode) else {
+            result = .failure(NativeHostError.invalidConfig("SOAP HTTP \(httpResponse.statusCode): \(body.prefix(500))"))
+            return
+        }
+
+        result = .success(body)
+    }.resume()
+
+    semaphore.wait()
+    return try result!.get()
+}
+
 func evaluateTouchId() -> NativeResponse {
     let command = "touchIdCheck"
     let context = LAContext()
@@ -280,6 +351,43 @@ func unlockPinAfterTouchId() throws -> NativeResponse {
     }
 
     return responseFromConfig(command: command, message: "pin-unlocked", config: config, configured: true)
+}
+
+func createAuthTicket() throws -> NativeResponse {
+    let command = "createAuthTicket"
+    guard let config = try loadConfig() else {
+        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
+    }
+
+    let endpoint = URL(string: "\(esfWebUrl)/ws/api1/AuthService")!
+    let envelope = """
+    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:esf="esf">
+      <soapenv:Header/>
+      <soapenv:Body>
+        <esf:createAuthTicketRequest>
+          <iin>\(xmlEscape(config.iin))</iin>
+          <ttlInMinutes>15</ttlInMinutes>
+        </esf:createAuthTicketRequest>
+      </soapenv:Body>
+    </soapenv:Envelope>
+    """
+
+    let responseXml = try postSoap(url: endpoint, soapAction: "esf/AuthService/createAuthTicket", envelope: envelope)
+    guard let authTicketXml = extractXmlElement("authTicketXml", from: responseXml), !authTicketXml.isEmpty else {
+        throw NativeHostError.invalidConfig("authTicketXml not found in SOAP response")
+    }
+
+    return NativeResponse(
+        ok: true,
+        command: command,
+        message: "auth-ticket-created",
+        timestamp: nowIso8601(),
+        configured: true,
+        iin: config.iin,
+        tin: config.tin,
+        certificatePath: config.certificatePath,
+        authTicketXml: authTicketXml
+    )
 }
 
 func runSignXml(xml: String, certificatePath: String, pin: String) throws -> String {
@@ -413,6 +521,8 @@ func handle(_ data: Data) throws -> NativeResponse {
         return try configStatus()
     case "unlockPin":
         return try unlockPinAfterTouchId()
+    case "createAuthTicket":
+        return try createAuthTicket()
     case "signXml":
         return try signXmlAfterTouchId(request)
     case "chooseCertificate":
