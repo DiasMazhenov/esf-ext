@@ -246,6 +246,19 @@ func extractXmlElement(_ name: String, from xml: String) -> String? {
     return xmlUnescape(String(xml[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines))
 }
 
+func extractAttribute(_ elementName: String, _ attributeName: String, from xml: String) -> String? {
+    let pattern = "<(?:[A-Za-z0-9_]+:)?\(elementName)\\b[^>]*\\s\(attributeName)=\"([^\"]+)\""
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        return nil
+    }
+    let range = NSRange(xml.startIndex..<xml.endIndex, in: xml)
+    guard let match = regex.firstMatch(in: xml, range: range),
+          let valueRange = Range(match.range(at: 1), in: xml) else {
+        return nil
+    }
+    return String(xml[valueRange])
+}
+
 func postSoap(url: URL, soapAction: String, envelope: String) throws -> String {
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
@@ -416,11 +429,16 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String) throws -> 
     </soapenv:Envelope>
     """
 
-    let responseXml = try postSoap(url: endpoint, soapAction: "esf/SessionService/createSessionSigned", envelope: envelope)
-    guard let sessionId = extractXmlElement("sessionId", from: responseXml), !sessionId.isEmpty else {
-        throw NativeHostError.invalidConfig("sessionId not found in SOAP response")
+    let signatureMethod = extractAttribute("SignatureMethod", "Algorithm", from: signedAuthTicket) ?? "unknown"
+    do {
+        let responseXml = try postSoap(url: endpoint, soapAction: "", envelope: envelope)
+        guard let sessionId = extractXmlElement("sessionId", from: responseXml), !sessionId.isEmpty else {
+            throw NativeHostError.invalidConfig("sessionId not found in SOAP response")
+        }
+        return sessionId
+    } catch NativeHostError.invalidConfig(let message) {
+        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; signatureMethod=\(signatureMethod)")
     }
-    return sessionId
 }
 
 func runSignXml(xml: String, certificatePath: String, pin: String) throws -> String {

@@ -237,7 +237,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.14
+0.1.15
 ```
 
 Next verification step:
@@ -249,7 +249,7 @@ Open ESF login modal -> click floating "Войти через Touch ID" panel ->
 Latest fix:
 
 ```text
-SignXml now rejects RSA signatures and IIN/certificate mismatch before sending to ESF. SDK SoapUI createSessionSigned samples use GOST512 signatures; RSA signed tickets can cause ESF SOAP 500 SecurityError.
+SessionService.createSessionSigned now uses empty SOAPAction per SDK WSDL. SOAP errors include createSessionSigned SOAPAction and XML SignatureMethod diagnostics.
 ```
 
 ### Java/JDK
@@ -334,7 +334,8 @@ Completed:
 - native host creates ESF signed sessions through `createAuthTicket -> Touch ID -> signXml -> createSessionSigned`;
 - `signedAuthTicket` is sent as CDATA, matching SDK SoapUI samples;
 - Java `SignXml` validates that the ticket IIN matches the selected certificate and that the XML signature method is GOST512, not RSA;
-- extension version bumped to display `0.1.14` (`manifest.version` is `0.1.14`, `manifest.version_name` is `0.1.14`).
+- `createSessionSigned` sends empty `SOAPAction`, matching SDK WSDL/SoapUI;
+- extension version bumped to display `0.1.15` (`manifest.version` is `0.1.15`, `manifest.version_name` is `0.1.15`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
