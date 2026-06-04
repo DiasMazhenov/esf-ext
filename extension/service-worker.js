@@ -1,6 +1,11 @@
 const SESSION_KEY = 'esfSession';
 const NATIVE_HOST = 'kz.esf.touchid';
-const NCA_LAYER_ENDPOINTS = ['wss://127.0.0.1:13579/', 'ws://127.0.0.1:13579/'];
+const NCA_LAYER_ENDPOINTS = [
+  'wss://127.0.0.1:13579/',
+  'wss://localhost:13579/',
+  'ws://127.0.0.1:13579/',
+  'ws://localhost:13579/'
+];
 
 const readSession = async () => {
   const result = await chrome.storage.session.get(SESSION_KEY);
@@ -56,6 +61,7 @@ const extractNcaPayload = (response) => {
 
 const sendNcaLayerRequest = (request) => new Promise((resolve, reject) => {
   const endpoints = [...NCA_LAYER_ENDPOINTS];
+  const failures = [];
   let socket;
   let timer;
 
@@ -67,13 +73,20 @@ const sendNcaLayerRequest = (request) => new Promise((resolve, reject) => {
   const tryNextEndpoint = () => {
     const endpoint = endpoints.shift();
     if (!endpoint) {
-      finish(reject, new Error('NCALayer не отвечает на 127.0.0.1:13579. Запустите NCALayer и попробуйте снова.'));
+      finish(reject, new Error(`NCALayer не отвечает из расширения. Проверенные адреса: ${failures.join('; ')}`));
       return;
     }
 
     clearTimeout(timer);
-    socket = new WebSocket(endpoint);
+    try {
+      socket = new WebSocket(endpoint);
+    } catch (error) {
+      failures.push(`${endpoint}: ${error.message}`);
+      tryNextEndpoint();
+      return;
+    }
     timer = setTimeout(() => {
+      failures.push(`${endpoint}: timeout`);
       socket.close();
       tryNextEndpoint();
     }, 60000);
@@ -91,6 +104,7 @@ const sendNcaLayerRequest = (request) => new Promise((resolve, reject) => {
       }
     });
     socket.addEventListener('error', () => {
+      failures.push(`${endpoint}: websocket error`);
       socket.close();
       tryNextEndpoint();
     });

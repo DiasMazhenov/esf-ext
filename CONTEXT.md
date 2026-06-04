@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.18
+0.1.19
 ```
 
 Next verification step:
@@ -257,7 +257,7 @@ Open ESF login modal -> click floating "Войти через Touch ID" panel ->
 Latest fix:
 
 ```text
-Experimental NCALayer fallback added without removing the SDK bridge.
+NCALayer fallback now includes localhost endpoints and explicit extension CSP connect-src.
 ```
 
 ### Java/JDK
@@ -348,9 +348,11 @@ Completed:
 - native diagnostics filter SLF4J noise before returning errors to Chrome;
 - popup and site floating panel have `Через NCA` / `Войти через NCA Layer` fallback buttons;
 - extension service worker signs `authTicketXml` through NCALayer commonUtils `signXml`;
+- NCALayer WebSocket endpoints include both `127.0.0.1` and `localhost`, `wss` and `ws`;
+- manifest has explicit `content_security_policy.extension_pages.connect-src` for NCALayer WebSocket URLs;
 - native host accepts external signed tickets through `createSessionFromSignedTicket`;
 - local debug XML snapshots are saved under Application Support for comparison and are not committed;
-- extension version bumped to display `0.1.18` (`manifest.version` is `0.1.18`, `manifest.version_name` is `0.1.18`).
+- extension version bumped to display `0.1.19` (`manifest.version` is `0.1.19`, `manifest.version_name` is `0.1.19`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
