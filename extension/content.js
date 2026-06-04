@@ -9,7 +9,7 @@ const findAuthModal = () => {
 const findButtonContainer = (modal) => {
   const buttons = [...modal.querySelectorAll('button')];
   const ecpButton = buttons.find((button) => button.textContent?.trim() === 'Войти с помощью ЭЦП');
-  return ecpButton?.parentElement || null;
+  return ecpButton?.parentElement || modal.querySelector('[class*="SelectMethodModal_container"]') || null;
 };
 
 const setStatus = (container, message, type = 'idle') => {
@@ -59,8 +59,10 @@ const injectTouchIdButton = () => {
   });
 
   container.prepend(button);
+  console.info('[ESF Touch ID Auth] Login button injected');
 };
 
 const observer = new MutationObserver(injectTouchIdButton);
 observer.observe(document.documentElement, { childList: true, subtree: true });
+console.info('[ESF Touch ID Auth] Content script loaded');
 injectTouchIdButton();

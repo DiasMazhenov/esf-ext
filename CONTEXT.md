@@ -287,7 +287,8 @@ Completed:
 - SDK XML signing is wired into native host command `signXml`;
 - Java `SignXml` now reads PIN from env `ESF_CERT_PIN` instead of requiring PIN in argv;
 - content script injects `Войти через Touch ID` into the ESF web login method modal;
-- extension version bumped to display `0.1.06` (`manifest.version` is `0.1.6`, `manifest.version_name` is `0.1.06`).
+- content script match uses `https://esf.gov.kz/*`; do not include `:8443` in Chrome match patterns.
+- extension version bumped to display `0.1.07` (`manifest.version` is `0.1.7`, `manifest.version_name` is `0.1.07`).
 
 Pending:
 - Reload extension in Chrome and verify setup save -> Touch ID unlock path.

@@ -1,12 +1,12 @@
 {
   "manifest_version": 3,
   "name": "ESF Touch ID Auth",
-  "version": "0.1.6",
-  "version_name": "0.1.06",
+  "version": "0.1.7",
+  "version_name": "0.1.07",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn5UFNJx+lAVguQh81ZOcY+QdUpnYoNCCIgvO/xv8kReesZ1pm2WnqIU/BMDNVnbguWYsZPItpsdBZwk+ExE5QbAeHZBVqu1vWE7BNrV32eb0tS2Ql8aPzQANgM4OOm+FLmL38AidC+5u7OsKFvyZS6rrxc9cbtL3Px1GcPPJAYoikhsCmlHk3AiGXPDPPHjfspSn21ELVIrmkEcr6pz/bhwVaPFvloeT2iv2KGug9nraZlHpzGd1gdikd2CzYBXs1+d0cBwTfWIARlrfxMdJLgOUQdutGMB7YIo1FY+uVfQuBx9XrvHAFxm777n4dWVM6yryTRPJ32LK7OfZp5u2dQIDAQAB",
   "description": "Local Touch ID gate for certificate-based ESF sessions.",
   "permissions": ["nativeMessaging", "storage"],
-  "host_permissions": ["https://esf.gov.kz:8443/esf-web/app*"],
+  "host_permissions": ["https://esf.gov.kz/*"],
   "action": {
     "default_title": "ESF Auth",
     "default_popup": "popup.html"
@@ -17,7 +17,7 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://esf.gov.kz:8443/esf-web/app*"],
+      "matches": ["https://esf.gov.kz/*"],
       "css": ["content.css"],
       "js": ["content.js"],
       "run_at": "document_idle"
