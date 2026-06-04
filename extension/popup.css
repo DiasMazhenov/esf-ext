@@ -85,6 +85,41 @@ h1 {
   background: var(--panel);
 }
 
+.config-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.full {
+  grid-column: 1 / -1;
+}
+
+input {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: inherit;
+}
+
+input:focus {
+  border-color: var(--primary);
+  outline: 2px solid rgba(15, 118, 110, 0.16);
+}
+
 .label {
   display: block;
   margin-bottom: 4px;

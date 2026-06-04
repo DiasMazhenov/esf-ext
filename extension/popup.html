@@ -22,6 +22,26 @@
         <p id="statusDetail">Нажмите вход, чтобы начать авторизацию через локальный helper.</p>
       </section>
 
+      <form id="configForm" class="config-form">
+        <label>
+          <span>ИИН</span>
+          <input id="iinInput" name="iin" inputmode="numeric" autocomplete="off" required>
+        </label>
+        <label>
+          <span>TIN / БИН</span>
+          <input id="tinInput" name="tin" inputmode="numeric" autocomplete="off" required>
+        </label>
+        <label class="full">
+          <span>Путь к .p12</span>
+          <input id="certificatePathInput" name="certificatePath" autocomplete="off" required>
+        </label>
+        <label class="full">
+          <span>PIN ЭЦП</span>
+          <input id="pinInput" name="pin" type="password" autocomplete="off" required>
+        </label>
+        <button id="saveConfigButton" type="submit" class="secondary full">Сохранить настройку</button>
+      </form>
+
       <div class="actions">
         <button id="loginButton" type="button">Войти</button>
         <button id="checkButton" type="button" class="secondary">Проверить</button>

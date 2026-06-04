@@ -67,6 +67,7 @@ Details are in:
 /Users/diasmazhenov/vibecode/esf-ext/native-host/build.sh
 /Users/diasmazhenov/vibecode/esf-ext/native-host/install-host.sh
 /Users/diasmazhenov/vibecode/esf-ext/native-host/test-ping.js
+/Users/diasmazhenov/vibecode/esf-ext/native-host/test-command.js
 /Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/README.md
 /Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/src/SignXml.java
 /Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/build.sh
@@ -153,7 +154,53 @@ Result:
 ### Touch ID Gate
 Native host has command `touchIdCheck` using Swift `LocalAuthentication` with policy `.deviceOwnerAuthenticationWithBiometrics`.
 
-It was compiled, but the actual prompt was not manually triggered in this chat to avoid unexpected system UI. It should be triggered by clicking “Войти” in the extension after Native Messaging host registration.
+Chrome popup login was manually verified by the user: it showed `Touch ID подтвержден`.
+
+### Keychain Config
+Native host now supports:
+
+```text
+saveConfig
+configStatus
+unlockPin
+```
+
+Popup has fields for:
+
+```text
+iin
+tin
+certificatePath
+pin
+```
+
+Rules:
+- `pin` is sent directly to native host and stored in macOS Keychain as a generic password.
+- Chrome does not store `pin`.
+- config file stores only `iin`, `tin`, `certificatePath`, `updatedAt`.
+- config file location: `~/Library/Application Support/kz.esf.touchid/config.json`.
+- Keychain service/account: `kz.esf.touchid` / `certificate-pin`.
+
+Verified:
+
+```bash
+/Users/diasmazhenov/vibecode/esf-ext/native-host/build.sh
+node /Users/diasmazhenov/vibecode/esf-ext/native-host/test-ping.js
+node /Users/diasmazhenov/vibecode/esf-ext/native-host/test-command.js configStatus
+node --check /Users/diasmazhenov/vibecode/esf-ext/extension/popup.js
+node --check /Users/diasmazhenov/vibecode/esf-ext/extension/service-worker.js
+```
+
+Result before user setup:
+
+```json
+{
+  "message": "not-configured",
+  "configured": false,
+  "ok": true,
+  "command": "configStatus"
+}
+```
 
 ### Java/JDK
 OpenJDK 21 was installed via Homebrew. It is keg-only, so use direct path:
@@ -222,22 +269,29 @@ Completed:
 - Java SDK signing bridge created and verified with sample `.p12`;
 - stable Chrome extension ID added to manifest: `bjokedaeolojcgaaanfhpofelnfgkebk`;
 - native host registered for that Chrome extension ID;
-- Chrome launched with unpacked extension via a temporary profile.
+- Chrome launched with unpacked extension via a temporary profile;
+- popup login reached Touch ID successfully;
+- Keychain-backed config commands added to native host;
+- popup setup form added for IIN/TIN/`.p12` path/PIN.
 
 Pending:
-- Click login and verify Chrome -> native host -> Touch ID path.
-- Add Keychain storage/retrieval for real PIN/config.
+- Reload extension in Chrome and verify setup save -> Touch ID unlock path.
 - Wire native host to Java `sign-xml` bridge.
 - Implement SOAP calls for `createAuthTicket`, `createSessionSigned`, `currentSessionStatus`, `closeSession`.
 - Test against ESF test stand.
 
 ## Next Step
-1. Run `/Users/diasmazhenov/vibecode/esf-ext/extension/open-dev-chrome.sh`.
-2. In that Chrome window/profile, click the extension popup.
-3. Click “Войти”.
-4. Complete Touch ID.
-5. Verify the popup shows `Touch ID подтвержден`.
-6. If native messaging fails, re-check `chrome://extensions` shows extension ID `bjokedaeolojcgaaanfhpofelnfgkebk`.
+1. In `chrome://extensions`, click reload on `ESF Touch ID Auth`.
+2. Open the extension popup.
+3. Fill:
+   - ИИН
+   - TIN / БИН
+   - full path to `.p12`
+   - PIN ЭЦП
+4. Click `Сохранить настройку`.
+5. Click `Войти`.
+6. Complete Touch ID.
+7. Verify popup shows `PIN открыт через Touch ID`.
 
 ## Security Rules
 - Never store real PIN in Chrome extension storage.

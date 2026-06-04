@@ -9,7 +9,8 @@
 - [x] Создать macOS native host в `/Users/diasmazhenov/vibecode/esf-ext/native-host`. Verify: extension получает ответ `ping/pong` через Native Messaging.
 - [x] Добавить Touch ID gate в native host через macOS LocalAuthentication/Keychain. Verify: без Touch ID секрет не возвращается, после Touch ID доступ разрешен.
 - [x] Зарегистрировать Chrome Native Messaging host для стабильного dev extension ID `bjokedaeolojcgaaanfhpofelnfgkebk`. Verify: `allowed_origins` указывает на этот ID.
-- [ ] Проверить popup login в Chrome: click “Войти” -> Touch ID -> `Touch ID подтвержден`. Verify: popup получает успешный ответ от native host.
+- [x] Добавить настройку ЭЦП: ИИН, TIN, путь к `.p12`, PIN в macOS Keychain. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
+- [ ] Проверить popup setup/login в Chrome: save config -> click “Войти” -> Touch ID -> `PIN открыт через Touch ID`. Verify: popup получает успешный ответ от native host.
 - [ ] Подключить SDK signing: загрузка `.p12`, PIN из Keychain, подпись auth ticket/XML. Verify: на тестовом ключе SDK возвращает подпись и сертификат.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.
 - [ ] Подключить тестовый стенд `test3.esf.kgd.gov.kz:8443`. Verify: создается сессия на тестовом стенде или получаем понятную ошибку доступа/сертификата.

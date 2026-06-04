@@ -14,8 +14,8 @@ const clearSession = async () => {
   await chrome.storage.session.remove(SESSION_KEY);
 };
 
-const sendNativeCommand = (command) => new Promise((resolve, reject) => {
-  chrome.runtime.sendNativeMessage(NATIVE_HOST, { command }, (response) => {
+const sendNativeCommand = (command, payload = {}) => new Promise((resolve, reject) => {
+  chrome.runtime.sendNativeMessage(NATIVE_HOST, { command, ...payload }, (response) => {
     const error = chrome.runtime.lastError;
     if (error) {
       reject(new Error(error.message));
@@ -34,9 +34,31 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 async function handleCommand(message) {
   switch (message?.command) {
-    case 'login': {
-      const nativeResponse = await sendNativeCommand('touchIdCheck');
+    case 'saveConfig': {
+      const nativeResponse = await sendNativeCommand('saveConfig', {
+        iin: message.iin,
+        tin: message.tin,
+        certificatePath: message.certificatePath,
+        pin: message.pin
+      });
+
       if (!nativeResponse?.ok) {
+        return { ok: false, error: nativeResponse?.message || 'Настройка не сохранена.' };
+      }
+
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Настройка сохранена',
+        detail: 'PIN сохранён в macOS Keychain. В Chrome он не хранится.'
+      };
+    }
+    case 'login': {
+      const nativeResponse = await sendNativeCommand('unlockPin');
+      if (!nativeResponse?.ok) {
+        if (nativeResponse?.message === 'setup-required') {
+          return { ok: false, error: 'Сначала заполните настройку ЭЦП и сохраните PIN в Keychain.' };
+        }
         return { ok: false, error: nativeResponse?.message || 'Touch ID check failed.' };
       }
 
@@ -50,18 +72,22 @@ async function handleCommand(message) {
       return {
         ok: true,
         status: 'OK',
-        title: 'Touch ID подтвержден',
-        detail: 'Следующий шаг: открыть PIN из Keychain и подписать auth ticket.'
+        title: 'PIN открыт через Touch ID',
+        detail: 'Следующий шаг: подписать auth ticket через SDK bridge.'
       };
     }
     case 'status': {
+      const nativeResponse = await sendNativeCommand('configStatus');
       const session = await readSession();
       if (!session) {
+        const configDetail = nativeResponse?.configured
+          ? `ЭЦП настроена: ${nativeResponse.certificatePath}`
+          : 'Сначала сохраните путь к .p12 и PIN в Keychain.';
         return {
           ok: true,
-          status: 'Idle',
-          title: 'Сессии нет',
-          detail: 'Нажмите вход, чтобы проверить Touch ID через native host.'
+          status: nativeResponse?.configured ? 'Ready' : 'Setup',
+          title: nativeResponse?.configured ? 'Готово к входу' : 'Нужна настройка',
+          detail: configDetail
         };
       }
       return {
