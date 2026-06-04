@@ -3,6 +3,7 @@
 ## Communication
 - Отвечай коротко и по делу.
 - Проектные файлы находятся в `/Users/diasmazhenov/vibecode/esf-ext`.
+- GitHub repo: `https://github.com/DiasMazhenov/esf-ext` (private).
 - Цель: Chrome extension + macOS native helper для удобного входа в ИС ЭСФ через официальную ЭЦП, где Touch ID только локально разрешает использование ключа/PIN.
 - После каждого завершённого обновления делать commit и push в GitHub.
 
