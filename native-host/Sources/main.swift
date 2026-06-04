@@ -23,6 +23,7 @@ struct NativeResponse: Encodable {
     let signedXml: String?
     let authTicketXml: String?
     let sessionId: String?
+    let diagnostics: String?
 
     init(
         ok: Bool,
@@ -35,7 +36,8 @@ struct NativeResponse: Encodable {
         certificatePath: String? = nil,
         signedXml: String? = nil,
         authTicketXml: String? = nil,
-        sessionId: String? = nil
+        sessionId: String? = nil,
+        diagnostics: String? = nil
     ) {
         self.ok = ok
         self.command = command
@@ -48,7 +50,13 @@ struct NativeResponse: Encodable {
         self.signedXml = signedXml
         self.authTicketXml = authTicketXml
         self.sessionId = sessionId
+        self.diagnostics = diagnostics
     }
+}
+
+struct SignXmlResult {
+    let signedXml: String
+    let diagnostics: String
 }
 
 struct EsfConfig: Codable {
@@ -415,7 +423,7 @@ func createAuthTicket() throws -> NativeResponse {
     )
 }
 
-func createSessionSigned(config: EsfConfig, signedAuthTicket: String) throws -> String {
+func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostics: String) throws -> String {
     let endpoint = URL(string: "\(esfWebUrl)/ws/api1/SessionService")!
     let envelope = """
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:esf="esf">
@@ -437,11 +445,11 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String) throws -> 
         }
         return sessionId
     } catch NativeHostError.invalidConfig(let message) {
-        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; signatureMethod=\(signatureMethod)")
+        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; signatureMethod=\(signatureMethod); \(diagnostics)")
     }
 }
 
-func runSignXml(xml: String, certificatePath: String, pin: String) throws -> String {
+func runSignXml(xml: String, certificatePath: String, pin: String) throws -> SignXmlResult {
     guard FileManager.default.isExecutableFile(atPath: signXmlPath) else {
         throw NativeHostError.invalidConfig("sign-xml bridge is not built")
     }
@@ -467,14 +475,14 @@ func runSignXml(xml: String, certificatePath: String, pin: String) throws -> Str
     let errorData = errorOutput.fileHandleForReading.readDataToEndOfFile()
     let signedXml = String(data: signedData, encoding: .utf8)?
         .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    let diagnostics = String(data: errorData, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
     guard process.terminationStatus == 0, !signedXml.isEmpty else {
-        let errorMessage = String(data: errorData, encoding: .utf8)?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-        throw NativeHostError.invalidConfig(errorMessage ?? "sign-xml failed")
+        throw NativeHostError.invalidConfig(diagnostics.isEmpty ? "sign-xml failed" : diagnostics)
     }
 
-    return signedXml
+    return SignXmlResult(signedXml: signedXml, diagnostics: diagnostics)
 }
 
 func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
@@ -494,7 +502,7 @@ func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
         return NativeResponse(ok: false, command: command, message: "pin-not-found", timestamp: nowIso8601(), configured: false)
     }
 
-    let signedXml = try runSignXml(xml: xml, certificatePath: config.certificatePath, pin: pin)
+    let signResult = try runSignXml(xml: xml, certificatePath: config.certificatePath, pin: pin)
     return NativeResponse(
         ok: true,
         command: command,
@@ -504,7 +512,8 @@ func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
         iin: config.iin,
         tin: config.tin,
         certificatePath: config.certificatePath,
-        signedXml: signedXml
+        signedXml: signResult.signedXml,
+        diagnostics: signResult.diagnostics
     )
 }
 
@@ -525,8 +534,12 @@ func createSignedSessionAfterTouchId() throws -> NativeResponse {
         return NativeResponse(ok: false, command: command, message: "pin-not-found", timestamp: nowIso8601(), configured: false)
     }
 
-    let signedTicket = try runSignXml(xml: authTicketXml, certificatePath: config.certificatePath, pin: pin)
-    let sessionId = try createSessionSigned(config: config, signedAuthTicket: signedTicket)
+    let signResult = try runSignXml(xml: authTicketXml, certificatePath: config.certificatePath, pin: pin)
+    let sessionId = try createSessionSigned(
+        config: config,
+        signedAuthTicket: signResult.signedXml,
+        diagnostics: signResult.diagnostics
+    )
 
     return NativeResponse(
         ok: true,

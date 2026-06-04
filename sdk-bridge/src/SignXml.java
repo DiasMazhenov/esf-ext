@@ -8,6 +8,7 @@ import javax.security.auth.x500.X500Principal;
 import javax.security.auth.x500.X500PrivateCredential;
 import java.nio.charset.StandardCharsets;
 import java.security.Security;
+import java.security.cert.X509Certificate;
 import java.util.Collections;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -58,6 +59,8 @@ public final class SignXml {
             Security.getProvider(KalkanProvider.PROVIDER_NAME)
         );
         validateSignatureMethod(signedXml);
+        verifySignedXml(signedXml);
+        printDiagnostics(signedXml, credential.getCertificate());
 
         System.out.print(signedXml);
     }
@@ -94,5 +97,32 @@ public final class SignXml {
                 "unsupported-signature-method: " + algorithm + ". Select a GOST512 NCA certificate, not RSA."
             );
         }
+    }
+
+    private static void verifySignedXml(String signedXml) throws Exception {
+        XMLUtil.verifyXmlSignature(
+            XMLUtil.getDocument(signedXml),
+            Security.getProvider(KalkanProvider.PROVIDER_NAME)
+        );
+    }
+
+    private static void printDiagnostics(String signedXml, X509Certificate certificate) {
+        String signatureMethod = signatureMethod(signedXml);
+        System.err.println(
+            "signXmlDiagnostics: localVerify=ok"
+                + "; signatureMethod=" + signatureMethod
+                + "; subject=" + redactDigits(certificate.getSubjectX500Principal().getName(X500Principal.RFC1779))
+                + "; issuer=" + certificate.getIssuerX500Principal().getName(X500Principal.RFC1779)
+                + "; notAfter=" + certificate.getNotAfter()
+        );
+    }
+
+    private static String signatureMethod(String signedXml) {
+        Matcher matcher = SIGNATURE_METHOD_PATTERN.matcher(signedXml);
+        return matcher.find() ? matcher.group(1) : "unknown";
+    }
+
+    private static String redactDigits(String value) {
+        return value.replaceAll("\\d", "*");
     }
 }
