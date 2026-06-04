@@ -159,7 +159,7 @@ Native host has command `touchIdCheck` using Swift `LocalAuthentication` with po
 
 Chrome popup login was manually verified by the user: it showed `Touch ID подтвержден`.
 
-### Keychain Config
+### Keychain Config / ESF Session
 Native host now supports:
 
 ```text
@@ -168,6 +168,7 @@ configStatus
 unlockPin
 chooseCertificate
 createAuthTicket
+createSignedSession
 signXml
 ```
 
@@ -188,6 +189,14 @@ Rules:
 - For individual users, `tin` is derived from `iin`; the popup does not ask for BIN separately.
 - config file location: `~/Library/Application Support/kz.esf.touchid/config.json`.
 - Keychain service/account: `kz.esf.touchid` / `certificate-pin`.
+- Native `createSignedSession` flow:
+  1. creates `authTicketXml` through `AuthService.createAuthTicket`;
+  2. asks Touch ID;
+  3. reads PIN from Keychain;
+  4. signs ticket through `sdk-bridge/bin/sign-xml`;
+  5. calls `SessionService.createSessionSigned`;
+  6. returns `sessionId` to the extension.
+- The floating site panel is raised above the footer: `bottom: 124px`.
 
 Verified:
 
@@ -197,6 +206,7 @@ node /Users/diasmazhenov/vibecode/esf-ext/native-host/test-ping.js
 node /Users/diasmazhenov/vibecode/esf-ext/native-host/test-command.js configStatus
 node --check /Users/diasmazhenov/vibecode/esf-ext/extension/popup.js
 node --check /Users/diasmazhenov/vibecode/esf-ext/extension/service-worker.js
+node /Users/diasmazhenov/vibecode/esf-ext/native-host/test-command.js createAuthTicket
 /Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/test-sign.sh \
   "/Users/diasmazhenov/Downloads/esf-sdk-2025/Документация ЭСФ SDK/sdk/localserver/AUTH_RSA256_CUSTOMER_NEW.p12" \
   "Qwerty12"
@@ -211,6 +221,29 @@ Result before user setup:
   "ok": true,
   "command": "configStatus"
 }
+```
+
+Latest live `createAuthTicket` check against the configured ESF endpoint:
+
+```json
+{
+  "ok": true,
+  "command": "createAuthTicket",
+  "message": "auth-ticket-created",
+  "authTicketXmlLength": 223
+}
+```
+
+Current extension version:
+
+```text
+0.1.12
+```
+
+Next verification step:
+
+```text
+Open ESF login modal -> click floating "Войти через Touch ID" panel -> Touch ID -> SDK signs auth ticket -> native host returns sessionId.
 ```
 
 ### Java/JDK

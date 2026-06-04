@@ -12,7 +12,7 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.11`. Verify: manifest `version_name` = `0.1.11`, техническая Chrome `version` = `0.1.11`.
+- [x] Ввести версионирование display-формата `0.1.12`. Verify: manifest `version_name` = `0.1.12`, техническая Chrome `version` = `0.1.12`.
 - [x] Добавить кнопку `Войти через Touch ID` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [x] Исправить content script match для сайта ИС ЭСФ. Verify: `matches` uses `https://esf.gov.kz/*`, not port-specific pattern.
 - [x] Усилить injection кнопки в модалку ИС ЭСФ. Verify: content script finds existing `Войти с помощью ЭЦП` button globally and injects into its parent.
@@ -23,8 +23,10 @@
 - [ ] Проверить кнопку на сайте ИС ЭСФ: открыть модалку входа -> увидеть `Войти через Touch ID` -> получить текущий native login status.
 - [x] Подключить SDK signing: загрузка `.p12`, PIN из Keychain, подпись auth ticket/XML. Verify: Java bridge smoke test returns `sign xml ok`; native host has `signXml`.
 - [x] Подключить SOAP `AuthService.createAuthTicket`. Verify: native host builds and exposes `createAuthTicket`.
-- [ ] Проверить `createAuthTicket` against ESF endpoint with current config. Verify: native response contains `authTicketXml`.
-- [ ] Передавать `authTicketXml` в native `signXml`. Verify: получаем signed auth ticket для текущего ИИН.
+- [x] Проверить `createAuthTicket` against ESF endpoint with current config. Verify: native response contains `authTicketXml`.
+- [x] Передавать `authTicketXml` в native `signXml`. Verify: native `createSignedSession` flow signs the ticket after Touch ID.
+- [x] Реализовать вызов `SessionService.createSessionSigned`. Verify: native host has `createSignedSession` and returns `sessionId` when ESF accepts the signed ticket.
+- [ ] Проверить полный сайтовый flow: floating panel -> Touch ID -> signed auth ticket -> `sessionId`. Verify: ESF session is created or SOAP error is shown clearly.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.
 - [ ] Подключить тестовый стенд `test3.esf.kgd.gov.kz:8443`. Verify: создается сессия на тестовом стенде или получаем понятную ошибку доступа/сертификата.
 - [ ] Минимальный UI расширения: статус сессии, кнопка входа, кнопка закрытия сессии. Verify: пользователь видит `OK/CLOSED/NOT_FOUND` и может вручную закрыть сессию.

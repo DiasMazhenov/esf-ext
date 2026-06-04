@@ -98,16 +98,16 @@ async function handleCommand(message) {
       };
     }
     case 'login': {
-      const nativeResponse = await sendNativeCommand('unlockPin');
+      const nativeResponse = await sendNativeCommand('createSignedSession');
       if (!nativeResponse?.ok) {
         if (nativeResponse?.message === 'setup-required') {
           return { ok: false, error: 'Сначала заполните настройку ЭЦП и сохраните PIN в Keychain.' };
         }
-        return { ok: false, error: nativeResponse?.message || 'Touch ID check failed.' };
+        return { ok: false, error: nativeResponse?.message || 'Сессия ИС ЭСФ не создана.' };
       }
 
       const session = {
-        id: `touchid-${Date.now()}`,
+        id: nativeResponse.sessionId,
         status: 'OK',
         createdAt: new Date().toISOString(),
         nativeMessage: nativeResponse.message
@@ -116,8 +116,8 @@ async function handleCommand(message) {
       return {
         ok: true,
         status: 'OK',
-        title: 'PIN открыт через Touch ID',
-        detail: 'Следующий шаг: подписать auth ticket через SDK bridge.'
+        title: 'Сессия ИС ЭСФ создана',
+        detail: `sessionId: ${nativeResponse.sessionId}`
       };
     }
     case 'status': {

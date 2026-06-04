@@ -22,6 +22,7 @@ struct NativeResponse: Encodable {
     let certificatePath: String?
     let signedXml: String?
     let authTicketXml: String?
+    let sessionId: String?
 
     init(
         ok: Bool,
@@ -33,7 +34,8 @@ struct NativeResponse: Encodable {
         tin: String? = nil,
         certificatePath: String? = nil,
         signedXml: String? = nil,
-        authTicketXml: String? = nil
+        authTicketXml: String? = nil,
+        sessionId: String? = nil
     ) {
         self.ok = ok
         self.command = command
@@ -45,6 +47,7 @@ struct NativeResponse: Encodable {
         self.certificatePath = certificatePath
         self.signedXml = signedXml
         self.authTicketXml = authTicketXml
+        self.sessionId = sessionId
     }
 }
 
@@ -353,12 +356,7 @@ func unlockPinAfterTouchId() throws -> NativeResponse {
     return responseFromConfig(command: command, message: "pin-unlocked", config: config, configured: true)
 }
 
-func createAuthTicket() throws -> NativeResponse {
-    let command = "createAuthTicket"
-    guard let config = try loadConfig() else {
-        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
-    }
-
+func createAuthTicketXml(config: EsfConfig) throws -> String {
     let endpoint = URL(string: "\(esfWebUrl)/ws/api1/AuthService")!
     let envelope = """
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:esf="esf">
@@ -376,6 +374,16 @@ func createAuthTicket() throws -> NativeResponse {
     guard let authTicketXml = extractXmlElement("authTicketXml", from: responseXml), !authTicketXml.isEmpty else {
         throw NativeHostError.invalidConfig("authTicketXml not found in SOAP response")
     }
+    return authTicketXml
+}
+
+func createAuthTicket() throws -> NativeResponse {
+    let command = "createAuthTicket"
+    guard let config = try loadConfig() else {
+        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
+    }
+
+    let authTicketXml = try createAuthTicketXml(config: config)
 
     return NativeResponse(
         ok: true,
@@ -388,6 +396,27 @@ func createAuthTicket() throws -> NativeResponse {
         certificatePath: config.certificatePath,
         authTicketXml: authTicketXml
     )
+}
+
+func createSessionSigned(config: EsfConfig, signedAuthTicket: String) throws -> String {
+    let endpoint = URL(string: "\(esfWebUrl)/ws/api1/SessionService")!
+    let envelope = """
+    <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:esf="esf">
+      <soapenv:Header/>
+      <soapenv:Body>
+        <esf:createSessionSignedRequest>
+          <tin>\(xmlEscape(config.tin))</tin>
+          <signedAuthTicket>\(xmlEscape(signedAuthTicket))</signedAuthTicket>
+        </esf:createSessionSignedRequest>
+      </soapenv:Body>
+    </soapenv:Envelope>
+    """
+
+    let responseXml = try postSoap(url: endpoint, soapAction: "esf/SessionService/createSessionSigned", envelope: envelope)
+    guard let sessionId = extractXmlElement("sessionId", from: responseXml), !sessionId.isEmpty else {
+        throw NativeHostError.invalidConfig("sessionId not found in SOAP response")
+    }
+    return sessionId
 }
 
 func runSignXml(xml: String, certificatePath: String, pin: String) throws -> String {
@@ -457,6 +486,39 @@ func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
     )
 }
 
+func createSignedSessionAfterTouchId() throws -> NativeResponse {
+    let command = "createSignedSession"
+    guard let config = try loadConfig(), hasPin() else {
+        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
+    }
+
+    let authTicketXml = try createAuthTicketXml(config: config)
+
+    let touchResponse = evaluateTouchId()
+    guard touchResponse.ok else {
+        return touchResponse
+    }
+
+    guard let pin = try readPin(), !pin.isEmpty else {
+        return NativeResponse(ok: false, command: command, message: "pin-not-found", timestamp: nowIso8601(), configured: false)
+    }
+
+    let signedTicket = try runSignXml(xml: authTicketXml, certificatePath: config.certificatePath, pin: pin)
+    let sessionId = try createSessionSigned(config: config, signedAuthTicket: signedTicket)
+
+    return NativeResponse(
+        ok: true,
+        command: command,
+        message: "session-created",
+        timestamp: nowIso8601(),
+        configured: true,
+        iin: config.iin,
+        tin: config.tin,
+        certificatePath: config.certificatePath,
+        sessionId: sessionId
+    )
+}
+
 func chooseCertificatePath() -> NativeResponse {
     let command = "chooseCertificate"
 
@@ -523,6 +585,8 @@ func handle(_ data: Data) throws -> NativeResponse {
         return try unlockPinAfterTouchId()
     case "createAuthTicket":
         return try createAuthTicket()
+    case "createSignedSession":
+        return try createSignedSessionAfterTouchId()
     case "signXml":
         return try signXmlAfterTouchId(request)
     case "chooseCertificate":
