@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.25
+0.1.26
 ```
 
 Next verification step:
@@ -260,6 +260,7 @@ Latest fix:
 Popup `Через NCA` now delegates signing to the active ESF tab content script, so NCALayer signing also runs in page context.
 `createSessionSigned` now saves the full SOAP request as `create-session-signed-request` debug XML and marks empty SOAP WS-Security header in errors.
 `createSessionSigned` debug package now includes request XML, response XML, and `create-session-signed-trace.json` with ticket/signature metadata.
+`createSessionSigned` now adds official WS-Security UsernameToken when optional SOAP password is saved in Keychain.
 ```
 
 ### Java/JDK
@@ -360,9 +361,10 @@ Completed:
 - popup `Через NCA` uses the active ESF tab and content script command `loginViaPageNcaLayer`; it no longer signs from service worker by default;
 - `createSessionSigned` saves the full SOAP request to debug and adds `wsSecurityHeader=empty`/`tinLength` diagnostics to SOAP errors;
 - `createSessionSigned` writes a debug trace JSON with source, SOAPAction, WS-Security mode, ticket IIN match, timemark, state length, signature/digest/c14n methods, transforms, signature length, certificate length;
+- popup has optional `Пароль ИС ЭСФ SOAP` field; native host stores it in macOS Keychain and uses it for WS-Security UsernameToken on `createSessionSigned`;
 - native host accepts external signed tickets through `createSessionFromSignedTicket`;
 - local debug XML snapshots are saved under Application Support for comparison and are not committed;
-- extension version bumped to display `0.1.25` (`manifest.version` is `0.1.25`, `manifest.version_name` is `0.1.25`).
+- extension version bumped to display `0.1.26` (`manifest.version` is `0.1.26`, `manifest.version_name` is `0.1.26`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.

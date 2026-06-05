@@ -8,6 +8,7 @@ struct NativeRequest: Decodable {
     let tin: String?
     let certificatePath: String?
     let pin: String?
+    let soapPassword: String?
     let xml: String?
     let signedAuthTicket: String?
 }
@@ -76,6 +77,7 @@ enum NativeHostError: Error {
 
 let keychainService = "kz.esf.touchid"
 let pinAccount = "certificate-pin"
+let soapPasswordAccount = "soap-password"
 let signXmlPath = "/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/bin/sign-xml"
 let esfWebUrl = "https://esf.gov.kz:8443/esf-web"
 
@@ -140,24 +142,24 @@ func saveConfigFile(_ config: EsfConfig) throws {
     try data.write(to: try configUrl(createDirectory: true), options: [.atomic])
 }
 
-func keychainQuery() -> [String: Any] {
+func keychainQuery(account: String = pinAccount) -> [String: Any] {
     [
         kSecClass as String: kSecClassGenericPassword,
         kSecAttrService as String: keychainService,
-        kSecAttrAccount as String: pinAccount
+        kSecAttrAccount as String: account
     ]
 }
 
-func savePin(_ pin: String) throws {
-    let pinData = Data(pin.utf8)
-    var query = keychainQuery()
-    query[kSecValueData as String] = pinData
+func saveSecret(_ value: String, account: String) throws {
+    let secretData = Data(value.utf8)
+    var query = keychainQuery(account: account)
+    query[kSecValueData as String] = secretData
     query[kSecAttrAccessible as String] = kSecAttrAccessibleWhenUnlockedThisDeviceOnly
 
     let status = SecItemAdd(query as CFDictionary, nil)
     if status == errSecDuplicateItem {
-        let update: [String: Any] = [kSecValueData as String: pinData]
-        let updateStatus = SecItemUpdate(keychainQuery() as CFDictionary, update as CFDictionary)
+        let update: [String: Any] = [kSecValueData as String: secretData]
+        let updateStatus = SecItemUpdate(keychainQuery(account: account) as CFDictionary, update as CFDictionary)
         guard updateStatus == errSecSuccess else {
             throw NativeHostError.keychain(updateStatus)
         }
@@ -169,8 +171,8 @@ func savePin(_ pin: String) throws {
     }
 }
 
-func readPin() throws -> String? {
-    var query = keychainQuery()
+func readSecret(account: String) throws -> String? {
+    var query = keychainQuery(account: account)
     query[kSecReturnData as String] = kCFBooleanTrue
     query[kSecMatchLimit as String] = kSecMatchLimitOne
 
@@ -188,8 +190,28 @@ func readPin() throws -> String? {
     return String(data: data, encoding: .utf8)
 }
 
+func savePin(_ pin: String) throws {
+    try saveSecret(pin, account: pinAccount)
+}
+
+func readPin() throws -> String? {
+    try readSecret(account: pinAccount)
+}
+
 func hasPin() -> Bool {
     (try? readPin()) != nil
+}
+
+func saveSoapPassword(_ password: String) throws {
+    try saveSecret(password, account: soapPasswordAccount)
+}
+
+func readSoapPassword() throws -> String? {
+    try readSecret(account: soapPasswordAccount)
+}
+
+func hasSoapPassword() -> Bool {
+    (try? readSoapPassword()) != nil
 }
 
 func responseFromConfig(command: String, message: String, config: EsfConfig?, configured: Bool) -> NativeResponse {
@@ -466,12 +488,16 @@ func saveEsfConfig(_ request: NativeRequest) throws -> NativeResponse {
         : iin
     let certificatePath = try normalizedRequired(request.certificatePath, name: "certificatePath")
     let pin = try normalizedRequired(request.pin, name: "pin")
+    let soapPassword = request.soapPassword?.trimmingCharacters(in: .whitespacesAndNewlines)
 
     guard FileManager.default.fileExists(atPath: certificatePath) else {
         throw NativeHostError.invalidConfig("certificate file not found")
     }
 
     try savePin(pin)
+    if let soapPassword, !soapPassword.isEmpty {
+        try saveSoapPassword(soapPassword)
+    }
     let config = EsfConfig(iin: iin, tin: tin, certificatePath: certificatePath, updatedAt: nowIso8601())
     try saveConfigFile(config)
 
@@ -549,10 +575,26 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostic
     writeDebugXml("signed-auth-ticket", signedAuthTicket)
     let endpoint = URL(string: "\(esfWebUrl)/ws/api1/SessionService")!
     let soapAction = ""
-    let wsSecurityHeader = "empty"
+    let soapPassword = try readSoapPassword()
+    let wsSecurityHeader = soapPassword?.isEmpty == false ? "usernameToken" : "empty"
+    let soapHeader: String
+    if let soapPassword, !soapPassword.isEmpty {
+        soapHeader = """
+          <soapenv:Header>
+            <wsse:Security soapenv:mustUnderstand="1" xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">
+              <wsse:UsernameToken wsu:Id="UsernameToken-\(debugTimestamp())">
+                <wsse:Username>\(xmlEscape(config.iin))</wsse:Username>
+                <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">\(xmlEscape(soapPassword))</wsse:Password>
+              </wsse:UsernameToken>
+            </wsse:Security>
+          </soapenv:Header>
+        """
+    } else {
+        soapHeader = "  <soapenv:Header/>"
+    }
     let envelope = """
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:esf="esf">
-      <soapenv:Header/>
+    \(soapHeader)
       <soapenv:Body>
         <esf:createSessionSignedRequest>
           <tin>\(xmlEscape(config.tin))</tin>
@@ -580,7 +622,7 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostic
         return sessionId
     } catch NativeHostError.invalidConfig(let message) {
         let debugPath = (try? debugDir(create: true).path) ?? "unavailable"
-        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; wsSecurityHeader=empty; tinLength=\(config.tin.count); signatureMethod=\(signatureMethod); debugTrace=create-session-signed-trace; debugDir=\(debugPath); \(diagnostics)")
+        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; wsSecurityHeader=\(wsSecurityHeader); tinLength=\(config.tin.count); signatureMethod=\(signatureMethod); debugTrace=create-session-signed-trace; debugDir=\(debugPath); \(diagnostics)")
     }
 }
 

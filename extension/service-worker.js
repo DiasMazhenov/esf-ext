@@ -161,7 +161,8 @@ async function handleCommand(message) {
       const nativeResponse = await sendNativeCommand('saveConfig', {
         iin: message.iin,
         certificatePath: message.certificatePath,
-        pin: message.pin
+        pin: message.pin,
+        soapPassword: message.soapPassword
       });
 
       if (!nativeResponse?.ok) {

@@ -6,6 +6,7 @@ const configForm = document.querySelector('#configForm');
 const iinInput = document.querySelector('#iinInput');
 const certificatePathInput = document.querySelector('#certificatePathInput');
 const pinInput = document.querySelector('#pinInput');
+const soapPasswordInput = document.querySelector('#soapPasswordInput');
 const chooseCertificateButton = document.querySelector('#chooseCertificateButton');
 const saveConfigButton = document.querySelector('#saveConfigButton');
 const loginButton = document.querySelector('#loginButton');
@@ -60,9 +61,11 @@ configForm.addEventListener('submit', (event) => {
   sendCommand('saveConfig', {
     iin: iinInput.value,
     certificatePath: certificatePathInput.value,
-    pin: pinInput.value
+    pin: pinInput.value,
+    soapPassword: soapPasswordInput.value
   }).then(() => {
     pinInput.value = '';
+    soapPasswordInput.value = '';
   });
 });
 
