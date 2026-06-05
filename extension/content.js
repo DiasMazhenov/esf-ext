@@ -36,6 +36,7 @@ const ensurePageBridge = () => {
   document.documentElement.append(script);
 };
 
+// Debug-only fallback for comparing NCALayer signatures. Main login does not call this.
 const signXmlViaPageNcaLayer = (xml, mode = 'soap') => new Promise((resolve, reject) => {
   ensurePageBridge();
 
@@ -152,7 +153,7 @@ const runTouchIdWebLogin = async () => {
     throw new Error(`Web ticket не получен: ${ticketXml.slice(0, 120)}`);
   }
 
-  setStatus('Touch ID: подпись ticket и открытие пароля...', 'busy');
+  setStatus('Биометрия: подпись ticket и открытие пароля...', 'busy');
   const signResponse = await chrome.runtime.sendMessage({ command: 'signWebTicket', xml: ticketXml });
   if (!signResponse?.ok) {
     throw new Error(signResponse?.error || 'Web ticket не подписан.');
@@ -255,7 +256,7 @@ const ensureTouchIdPanel = () => {
 
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = 'Войти через Touch ID';
+  button.textContent = 'Войти через биометрию';
 
   const status = document.createElement('div');
   status.id = STATUS_ID;
@@ -270,7 +271,7 @@ const ensureTouchIdPanel = () => {
         setStatus(response?.error || fallbackText, 'error');
         return;
       }
-      setStatus(response.detail || response.title || 'Touch ID подтверждён.', 'ok');
+      setStatus(response.detail || response.title || 'Биометрия подтверждена.', 'ok');
     } catch (error) {
       setStatus(error.message, 'error');
     } finally {
@@ -279,17 +280,16 @@ const ensureTouchIdPanel = () => {
   };
 
   button.addEventListener('click', () => {
-    runLogin('loginViaTouchIdWeb', 'Проверка Touch ID...', 'Не удалось выполнить вход через Touch ID.');
+    runLogin('loginViaTouchIdWeb', 'Проверка биометрии...', 'Не удалось выполнить вход через биометрию.');
   });
 
   panel.append(button, status);
   document.documentElement.append(panel);
-  console.info('[ESF Touch ID Auth] Floating login panel injected');
+  console.info('[ESF Bio Auth] Floating login panel injected');
 };
 
 const observer = new MutationObserver(ensureTouchIdPanel);
 observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
-console.info('[ESF Touch ID Auth] Content script loaded');
-ensurePageBridge();
+console.info('[ESF Bio Auth] Content script loaded');
 ensureTouchIdPanel();
 window.setInterval(ensureTouchIdPanel, 500);

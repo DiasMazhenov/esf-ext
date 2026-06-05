@@ -21,7 +21,7 @@ mkdir -p "$TARGET_DIR"
 cat > "$TARGET_FILE" <<JSON
 {
   "name": "$HOST_NAME",
-  "description": "ESF Touch ID native messaging host",
+  "description": "ESF Bio Auth native messaging host",
   "path": "$HOST_BIN",
   "type": "stdio",
   "allowed_origins": [

@@ -144,6 +144,7 @@ const signXmlViaNcaLayer = async (xml) => sendNcaLayerRequest({
   args: ['PKCS12', 'SIGNATURE', xml, '', '']
 });
 
+// Debug-only fallback. Main login uses the native SDK bridge and never calls NCALayer.
 const sendActiveEsfTabCommand = async (payload) => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const activeTab = tabs[0];
@@ -260,7 +261,7 @@ async function handleCommand(message) {
         ok: true,
         status: 'OK',
         title: 'Web ticket подписан',
-        detail: 'Пароль ИС ЭСФ получен из Keychain после Touch ID.',
+        detail: 'Пароль ИС ЭСФ получен из Keychain после биометрии.',
         signedXml: nativeResponse.signedXml,
         webPassword: nativeResponse.webPassword
       };
@@ -295,6 +296,7 @@ async function handleCommand(message) {
       };
     }
     case 'loginViaNcaLayer': {
+      // Debug-only fallback kept for comparing ESF/NCALayer signature formats.
       if (message.useActiveTab !== false && !message.signedAuthTicket) {
         return sendActiveEsfTabCommand({ command: 'loginViaPageNcaLayer' });
       }
@@ -337,14 +339,18 @@ async function handleCommand(message) {
           ok: true,
           status: nativeResponse?.configured ? 'Ready' : 'Setup',
           title: nativeResponse?.configured ? 'Готово к входу' : 'Нужна настройка',
-          detail: configDetail
+          detail: configDetail,
+          iin: nativeResponse?.iin,
+          certificatePath: nativeResponse?.certificatePath
         };
       }
       return {
         ok: true,
         status: session.status,
         title: 'Сессия сохранена',
-        detail: `ID: ${session.id}`
+        detail: `ID: ${session.id}`,
+        iin: nativeResponse?.iin,
+        certificatePath: nativeResponse?.certificatePath
       };
     }
     case 'logout': {

@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "ESF Touch ID Auth",
-  "version": "0.1.31",
-  "version_name": "0.1.31",
+  "name": "ESF Bio Auth",
+  "version": "0.1.32",
+  "version_name": "0.1.32",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn5UFNJx+lAVguQh81ZOcY+QdUpnYoNCCIgvO/xv8kReesZ1pm2WnqIU/BMDNVnbguWYsZPItpsdBZwk+ExE5QbAeHZBVqu1vWE7BNrV32eb0tS2Ql8aPzQANgM4OOm+FLmL38AidC+5u7OsKFvyZS6rrxc9cbtL3Px1GcPPJAYoikhsCmlHk3AiGXPDPPHjfspSn21ELVIrmkEcr6pz/bhwVaPFvloeT2iv2KGug9nraZlHpzGd1gdikd2CzYBXs1+d0cBwTfWIARlrfxMdJLgOUQdutGMB7YIo1FY+uVfQuBx9XrvHAFxm777n4dWVM6yryTRPJ32LK7OfZp5u2dQIDAQAB",
-  "description": "Local Touch ID gate for certificate-based ESF sessions.",
+  "description": "Local biometric gate for certificate-based ESF sessions.",
   "permissions": ["nativeMessaging", "storage", "activeTab", "tabs"],
   "host_permissions": [
     "https://esf.gov.kz/*",
@@ -15,8 +15,20 @@
     "extension_pages": "script-src 'self'; object-src 'self'; connect-src 'self' wss://127.0.0.1:13579 wss://localhost:13579"
   },
   "action": {
-    "default_title": "ESF Auth",
-    "default_popup": "popup.html"
+    "default_title": "ESF Bio Auth",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   },
   "background": {
     "service_worker": "service-worker.js",

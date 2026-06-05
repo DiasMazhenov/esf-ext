@@ -3,16 +3,17 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ESF Auth</title>
+    <title>ESF Bio Auth</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main class="shell">
       <header class="header">
-        <div>
+        <img class="app-logo" src="icons/icon-48.png" alt="">
+        <div class="header-copy">
           <p class="eyebrow">ИС ЭСФ</p>
           <div class="title-row">
-            <h1>Touch ID Auth</h1>
+            <h1>ESF Bio Auth</h1>
             <span id="versionLabel" class="version-label"></span>
           </div>
         </div>
@@ -24,6 +25,8 @@
         <strong id="sessionStatus">Не проверена</strong>
         <p id="statusDetail">Нажмите вход, чтобы начать авторизацию через локальный helper.</p>
       </section>
+
+      <button id="editConfigButton" type="button" class="secondary edit-config-button" hidden>Ввести новые данные</button>
 
       <form id="configForm" class="config-form">
         <label>
@@ -45,11 +48,14 @@
           <span>Пароль ИС ЭСФ</span>
           <input id="soapPasswordInput" name="soapPassword" type="password" autocomplete="off">
         </label>
-        <button id="saveConfigButton" type="submit" class="secondary full">Сохранить настройку</button>
+        <button id="saveConfigButton" type="submit" class="save-button full">
+          <img src="icons/save2.svg" alt="">
+          <span>Сохранить настройку</span>
+        </button>
       </form>
 
       <div class="actions">
-        <button id="loginButton" type="button">Войти через Touch ID</button>
+        <button id="loginButton" type="button">Войти через биометрию</button>
         <button id="checkButton" type="button" class="secondary">Проверить</button>
         <button id="logoutButton" type="button" class="secondary danger">Закрыть</button>
       </div>

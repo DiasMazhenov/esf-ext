@@ -1,7 +1,7 @@
-# ESF Touch ID Auth Extension
+# ESF Bio Auth Extension
 
 ## Goal
-Сделать Chrome extension + macOS native helper, который открывает/обновляет сессию ИС ЭСФ через ЭЦП, но разрешает использование ключа через Touch ID.
+Сделать Chrome extension + macOS native helper, который открывает/обновляет сессию ИС ЭСФ через ЭЦП, но разрешает использование ключа через системную биометрию.
 
 ## Tasks
 - [x] Зафиксировать auth-flow SDK: `AuthService.createAuthTicket` -> подпись XML Dsig -> `SessionService.createSessionSigned` -> `sessionId`. Verify: есть список endpoint/WSDL и обязательных полей.
@@ -12,15 +12,15 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.31`. Verify: manifest `version_name` = `0.1.31`, техническая Chrome `version` = `0.1.31`.
-- [x] Добавить кнопку `Войти через Touch ID` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
+- [x] Ввести версионирование display-формата `0.1.32`. Verify: manifest `version_name` = `0.1.32`, техническая Chrome `version` = `0.1.32`.
+- [x] Добавить кнопку `Войти через биометрию` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [x] Исправить content script match для сайта ИС ЭСФ. Verify: `matches` uses `https://esf.gov.kz/*`, not port-specific pattern.
 - [x] Усилить injection кнопки в модалку ИС ЭСФ. Verify: content script finds existing `Войти с помощью ЭЦП` button globally and injects into its parent.
 - [x] Исправить injection при скрытых ReactModal duplicate nodes. Verify: content script targets only visible auth buttons and keeps polling until visible injected button exists.
 - [x] Заменить встраивание в ReactModal на fixed floating panel поверх страницы. Verify: panel appears when auth modal text is present in body.
 - [x] Поднять fixed floating panel на 100px. Verify: `content.css` uses `bottom: 124px`.
 - [ ] Проверить popup setup/login в Chrome: save config -> click “Войти” -> Touch ID -> `PIN открыт через Touch ID`. Verify: popup получает успешный ответ от native host.
-- [ ] Проверить кнопку на сайте ИС ЭСФ: открыть модалку входа -> увидеть `Войти через Touch ID` -> получить текущий native login status.
+- [ ] Проверить кнопку на сайте ИС ЭСФ: открыть модалку входа -> увидеть `Войти через биометрию` -> получить текущий native login status.
 - [x] Подключить SDK signing: загрузка `.p12`, PIN из Keychain, подпись auth ticket/XML. Verify: Java bridge smoke test returns `sign xml ok`; native host has `signXml`.
 - [x] Подключить SOAP `AuthService.createAuthTicket`. Verify: native host builds and exposes `createAuthTicket`.
 - [x] Проверить `createAuthTicket` against ESF endpoint with current config. Verify: native response contains `authTicketXml`.
@@ -46,6 +46,11 @@
 - [x] Сделать основной web-login без NCALayer: `/ajax/login/ticket` -> SDK bridge sign -> Keychain web password after Touch ID -> `/ajax/login`. Verify: JS syntax and Swift build pass.
 - [x] Убрать видимые NCALayer кнопки из popup и site panel. Verify: JS syntax pass.
 - [x] Исправить popup handoff для ESF на `:8443` и убрать старый NCALayer текст ошибки. Verify: JS syntax pass.
+- [x] Переименовать UI в `ESF Bio Auth` / `Войти через биометрию`. Verify: JS syntax pass.
+- [x] Спрятать поля настройки при `Ready/OK` и добавить кнопку `Ввести новые данные`. Verify: popup JS syntax pass.
+- [x] Добавить manifest icons и logo в popup из `extension/icons`. Verify: manifest parse pass.
+- [x] Пометить NCA как debug-only и убрать auto-inject `page-ncalayer.js` из обычного flow. Verify: JS syntax pass.
+- [x] Обновить дизайн popup с акцентом `#F6663E` и icon на кнопке сохранения. Verify: CSS/manifest present.
 - [ ] Сравнить debug XML: SDK signed ticket vs NCALayer signed ticket. Verify: есть локальные debug-файлы в Application Support.
 - [ ] Проверить полный сайтовый flow: floating panel -> Touch ID -> signed auth ticket -> `sessionId`. Verify: ESF session is created or SOAP error is shown clearly.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.
@@ -54,7 +59,7 @@
 - [ ] Phase X: Verification. Verify: полный сценарий Chrome -> Touch ID -> подпись -> `sessionId` -> status check проходит на тестовом стенде.
 
 ## Done When
-- [ ] Пользователь один раз настраивает ЭЦП, дальше вход/обновление сессии запускается из Chrome через Touch ID.
+- [ ] Пользователь один раз настраивает ЭЦП, дальше вход/обновление сессии запускается из Chrome через биометрию.
 - [ ] PIN/секреты не лежат в extension storage и не передаются в браузер.
 - [ ] Если сессия умерла, расширение само переоткрывает ее после Touch ID.
 

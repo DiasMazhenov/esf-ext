@@ -1,10 +1,10 @@
-# ESF Touch ID Auth Extension Context
+# ESF Bio Auth Extension Context
 
 ## Communication
 - Отвечай коротко и по делу.
 - Проектные файлы находятся в `/Users/diasmazhenov/vibecode/esf-ext`.
 - GitHub repo: `https://github.com/DiasMazhenov/esf-ext` (private).
-- Цель: Chrome extension + macOS native helper для удобного входа в ИС ЭСФ через официальную ЭЦП, где Touch ID только локально разрешает использование ключа/PIN.
+- Цель: Chrome extension + macOS native helper для удобного входа в ИС ЭСФ через официальную ЭЦП, где системная биометрия только локально разрешает использование ключа/PIN.
 - После каждого завершённого обновления делать commit и push в GitHub.
 - После каждого изменения поднимать номер версии в формате display `0.1.02`; в Chrome manifest использовать `version_name`, потому что `version: "0.1.02"` невалиден из-за leading zero.
 
@@ -157,7 +157,7 @@ Result:
 ### Touch ID Gate
 Native host has command `touchIdCheck` using Swift `LocalAuthentication` with policy `.deviceOwnerAuthenticationWithBiometrics`.
 
-Chrome popup login was manually verified by the user: it showed `Touch ID подтвержден`.
+Chrome popup login was manually verified by the user with biometric confirmation.
 
 ### Keychain Config / ESF Session
 Native host now supports:
@@ -245,13 +245,13 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.31
+0.1.32
 ```
 
 Next verification step:
 
 ```text
-Open ESF login modal -> click floating "Войти через Touch ID" panel -> Touch ID -> SDK signs auth ticket -> native host returns sessionId.
+Open ESF login modal -> click floating "Войти через биометрию" panel -> biometric confirmation -> SDK signs web ticket -> ESF web login completes.
 ```
 
 Latest fix:
@@ -264,8 +264,10 @@ Popup `Через NCA` now delegates signing to the active ESF tab content scrip
 NCA site flow now continues after SOAP `sessionId` into ESF web login: `/ajax/login/ticket` -> NCALayer official auth signature -> `/ajax/login/xmlDsigCertInfo` -> `/ajax/login` -> reload app.
 NCALayer parser now accepts signed XML returned as `body.result[0]`, which is how the official auth dialog can return `<authSign>...`.
 NCA web-login prompt now calls the second password the ESF web cabinet password, not SOAP password, and states it is not saved by the extension.
-Primary `Войти через Touch ID` flow no longer uses NCALayer: content script fetches `/ajax/login/ticket`, native host signs it through the local SDK bridge, unlocks saved ESF web password from Keychain after Touch ID, then content script posts `/ajax/login`.
+Primary `Войти через биометрию` flow no longer uses NCALayer: content script fetches `/ajax/login/ticket`, native host signs it through the local SDK bridge, unlocks saved ESF web password from Keychain after biometric confirmation, then content script posts `/ajax/login`.
 Popup active-tab validation now accepts `https://esf.gov.kz:8443/...` by checking URL hostname instead of string prefix, and stale NCALayer wording was removed from the error.
+Popup was redesigned with accent `#F6663E`, extension icons, logo near `ESF Bio Auth`, hidden config form when status is `Ready/OK`, and a `Ввести новые данные` edit button.
+Primary labels now say `биометрия` instead of `Touch ID`; NCALayer bridge is no longer auto-injected and remains debug-only fallback.
 ```
 
 ### Java/JDK
@@ -342,7 +344,7 @@ Completed:
 - popup has a native file picker button for `.p12` path;
 - SDK XML signing is wired into native host command `signXml`;
 - Java `SignXml` now reads PIN from env `ESF_CERT_PIN` instead of requiring PIN in argv;
-- content script injects `Войти через Touch ID` into the ESF web login method modal;
+- content script shows `Войти через биометрию` when the ESF web login method modal is open;
 - content script match uses `https://esf.gov.kz/*`; do not include `:8443` in Chrome match patterns.
 - content script no longer injects inside the React modal. It shows a fixed floating Touch ID panel above the page when body text contains `Способ авторизации` and `Войти с помощью ЭЦП`.
 - floating Touch ID panel is positioned 100px higher than before (`bottom: 124px`).
@@ -352,7 +354,7 @@ Completed:
 - Java `SignXml` validates that the ticket IIN matches the selected certificate and that the XML signature method is GOST512, not RSA;
 - `createSessionSigned` sends empty `SOAPAction`, matching SDK WSDL/SoapUI;
 - Java `SignXml` verifies the generated XML signature locally and emits sanitized diagnostics: `localVerify`, `signatureMethod`, certificate subject/issuer/notAfter;
-- popup header shows `version_name` next to `Touch ID Auth`;
+- popup header shows `version_name` next to `ESF Bio Auth`;
 - native diagnostics filter SLF4J noise before returning errors to Chrome;
 - popup and site floating panel have `Через NCA` / `Войти через NCA Layer` fallback buttons;
 - extension service worker signs `authTicketXml` through NCALayer commonUtils `signXml`;
@@ -360,7 +362,7 @@ Completed:
 - manifest has explicit `content_security_policy.extension_pages.connect-src` for NCALayer WebSocket URLs;
 - `ws://` endpoints were removed because NCALayer returns invalid HTTP response on plain WebSocket;
 - if Chrome rejects the local WSS certificate, popup tells the user to open `https://127.0.0.1:13579/` and accept the certificate in the same Chrome profile;
-- `page-ncalayer.js` is injected as a page-context bridge from the content script for the ESF site button;
+- `page-ncalayer.js` can be injected as a page-context bridge only by the debug-only NCA fallback;
 - site `Войти через NCA Layer` signs inside the ESF page context, then sends the signed ticket to native host;
 - NCALayer greeting messages containing only `result.version` are ignored in both page bridge and service worker;
 - popup `Через NCA` uses the active ESF tab and content script command `loginViaPageNcaLayer`; it no longer signs from service worker by default;
@@ -374,8 +376,12 @@ Completed:
 - NCA web-login status/prompt now uses `API session` and `web cabinet password` wording to avoid confusing it with SOAP password;
 - primary Touch ID web login no longer uses NCALayer: SDK bridge signs the ESF web ticket and native host returns the saved ESF password after Touch ID;
 - visible NCALayer buttons were removed from popup and site panel; NCA code remains only as fallback/debug path;
-- popup accepts active ESF tabs on port `8443` for Touch ID web-login handoff;
-- extension version bumped to display `0.1.31` (`manifest.version` is `0.1.31`, `manifest.version_name` is `0.1.31`).
+- popup accepts active ESF tabs on port `8443` for biometric web-login handoff;
+- popup hides credential fields when configured and exposes `Ввести новые данные` for updates;
+- manifest uses extension icons from `extension/icons` and popup shows the logo near `ESF Bio Auth`;
+- visible labels were renamed from Touch ID to biometrics, while native host still uses macOS LocalAuthentication;
+- NCALayer fallback is marked debug-only and the page bridge is no longer auto-injected during normal login;
+- extension version bumped to display `0.1.32` (`manifest.version` is `0.1.32`, `manifest.version_name` is `0.1.32`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
@@ -385,14 +391,14 @@ Pending:
 - Test against ESF test stand.
 
 ## Next Step
-1. In `chrome://extensions`, click reload on `ESF Touch ID Auth`.
+1. In `chrome://extensions`, click reload on `ESF Bio Auth`.
 2. Open ESF login modal.
-3. Click the floating `Войти через Touch ID` panel.
-4. Complete Touch ID.
+3. Click the floating `Войти через биометрию` panel.
+4. Complete biometric confirmation.
 5. Verify ESF returns `sessionId` or a clear SOAP error.
 
 ## Security Rules
 - Never store real PIN in Chrome extension storage.
 - Browser side may store only short-lived `sessionId`/status.
-- Native host owns Touch ID, Keychain, `.p12` loading, and signing.
+- Native host owns biometric confirmation, Keychain, `.p12` loading, and signing.
 - Real PIN should go to macOS Keychain only, ideally protected with biometric access control.

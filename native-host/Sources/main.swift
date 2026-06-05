@@ -461,19 +461,19 @@ func evaluateTouchId() -> NativeResponse {
         return NativeResponse(
             ok: false,
             command: command,
-            message: policyError?.localizedDescription ?? "Touch ID is unavailable",
+            message: policyError?.localizedDescription ?? "Biometrics are unavailable",
             timestamp: nowIso8601()
         )
     }
 
     let semaphore = DispatchSemaphore(value: 0)
-    var response = NativeResponse(ok: false, command: command, message: "Touch ID was not completed", timestamp: nowIso8601())
+    var response = NativeResponse(ok: false, command: command, message: "Biometric authentication was not completed", timestamp: nowIso8601())
 
     context.evaluatePolicy(policy, localizedReason: "Разрешить использование ЭЦП для входа в ИС ЭСФ") { success, error in
         response = NativeResponse(
             ok: success,
             command: command,
-            message: success ? "touch-id-ok" : (error?.localizedDescription ?? "Touch ID failed"),
+            message: success ? "biometry-ok" : (error?.localizedDescription ?? "Biometric authentication failed"),
             timestamp: nowIso8601()
         )
         semaphore.signal()
