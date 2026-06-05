@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.29
+0.1.30
 ```
 
 Next verification step:
@@ -264,6 +264,7 @@ Popup `Через NCA` now delegates signing to the active ESF tab content scrip
 NCA site flow now continues after SOAP `sessionId` into ESF web login: `/ajax/login/ticket` -> NCALayer official auth signature -> `/ajax/login/xmlDsigCertInfo` -> `/ajax/login` -> reload app.
 NCALayer parser now accepts signed XML returned as `body.result[0]`, which is how the official auth dialog can return `<authSign>...`.
 NCA web-login prompt now calls the second password the ESF web cabinet password, not SOAP password, and states it is not saved by the extension.
+Primary `Войти через Touch ID` flow no longer uses NCALayer: content script fetches `/ajax/login/ticket`, native host signs it through the local SDK bridge, unlocks saved ESF web password from Keychain after Touch ID, then content script posts `/ajax/login`.
 ```
 
 ### Java/JDK
@@ -364,13 +365,15 @@ Completed:
 - popup `Через NCA` uses the active ESF tab and content script command `loginViaPageNcaLayer`; it no longer signs from service worker by default;
 - `createSessionSigned` saves the full SOAP request to debug and adds `wsSecurityHeader=empty`/`tinLength` diagnostics to SOAP errors;
 - `createSessionSigned` writes a debug trace JSON with source, SOAPAction, WS-Security mode, ticket IIN match, timemark, state length, signature/digest/c14n methods, transforms, signature length, certificate length;
-- popup has optional `Пароль ИС ЭСФ SOAP` field; native host stores it in macOS Keychain and uses it for WS-Security UsernameToken on `createSessionSigned`;
+- popup has optional `Пароль ИС ЭСФ` field; native host stores it in macOS Keychain and uses it for WS-Security UsernameToken and web `/ajax/login`;
 - site/popup NCA login now attempts official ESF web login after SOAP session creation and reloads `/esf-web/app` on success;
 - native host accepts external signed tickets through `createSessionFromSignedTicket`;
 - local debug XML snapshots are saved under Application Support for comparison and are not committed;
 - NCALayer response parser accepts array payloads such as `body.result[0]` for official auth signatures;
 - NCA web-login status/prompt now uses `API session` and `web cabinet password` wording to avoid confusing it with SOAP password;
-- extension version bumped to display `0.1.29` (`manifest.version` is `0.1.29`, `manifest.version_name` is `0.1.29`).
+- primary Touch ID web login no longer uses NCALayer: SDK bridge signs the ESF web ticket and native host returns the saved ESF password after Touch ID;
+- visible NCALayer buttons were removed from popup and site panel; NCA code remains only as fallback/debug path;
+- extension version bumped to display `0.1.30` (`manifest.version` is `0.1.30`, `manifest.version_name` is `0.1.30`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.

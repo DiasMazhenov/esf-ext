@@ -237,7 +237,34 @@ async function handleCommand(message) {
         signedXml: nativeResponse.signedXml
       };
     }
+    case 'signWebTicket': {
+      const nativeResponse = await sendNativeCommand('signWebTicket', { xml: message.xml });
+      if (!nativeResponse?.ok) {
+        if (nativeResponse?.message === 'web-password-not-found') {
+          return { ok: false, error: 'Сохраните пароль ИС ЭСФ в настройке расширения.' };
+        }
+        if (nativeResponse?.message === 'setup-required') {
+          return { ok: false, error: 'Сначала заполните настройку ЭЦП и сохраните PIN в Keychain.' };
+        }
+        return { ok: false, error: nativeResponse?.message || 'Web ticket не подписан.' };
+      }
+
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Web ticket подписан',
+        detail: 'Пароль ИС ЭСФ получен из Keychain после Touch ID.',
+        signedXml: nativeResponse.signedXml,
+        webPassword: nativeResponse.webPassword
+      };
+    }
     case 'login': {
+      return sendActiveEsfTabCommand({ command: 'loginViaTouchIdWeb' });
+    }
+    case 'loginViaTouchIdWeb': {
+      return sendActiveEsfTabCommand({ command: 'loginViaTouchIdWeb' });
+    }
+    case 'createApiSession': {
       const nativeResponse = await sendNativeCommand('createSignedSession');
       if (!nativeResponse?.ok) {
         if (nativeResponse?.message === 'setup-required') {

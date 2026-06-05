@@ -12,7 +12,7 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.29`. Verify: manifest `version_name` = `0.1.29`, техническая Chrome `version` = `0.1.29`.
+- [x] Ввести версионирование display-формата `0.1.30`. Verify: manifest `version_name` = `0.1.30`, техническая Chrome `version` = `0.1.30`.
 - [x] Добавить кнопку `Войти через Touch ID` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [x] Исправить content script match для сайта ИС ЭСФ. Verify: `matches` uses `https://esf.gov.kz/*`, not port-specific pattern.
 - [x] Усилить injection кнопки в модалку ИС ЭСФ. Verify: content script finds existing `Войти с помощью ЭЦП` button globally and injects into its parent.
@@ -43,6 +43,8 @@
 - [x] После успешного NCA SOAP `sessionId` продолжать официальный web-login сайта: ticket -> NCALayer official auth signature -> certInfo -> `/ajax/login` -> reload. Verify: JS syntax pass.
 - [x] Принимать NCALayer official auth response в формате `body.result[0]`. Verify: JS syntax pass.
 - [x] Уточнить текст второго пароля в NCA web-login: это пароль web-кабинета ИС ЭСФ, не SOAP. Verify: JS syntax pass.
+- [x] Сделать основной web-login без NCALayer: `/ajax/login/ticket` -> SDK bridge sign -> Keychain web password after Touch ID -> `/ajax/login`. Verify: JS syntax and Swift build pass.
+- [x] Убрать видимые NCALayer кнопки из popup и site panel. Verify: JS syntax pass.
 - [ ] Сравнить debug XML: SDK signed ticket vs NCALayer signed ticket. Verify: есть локальные debug-файлы в Application Support.
 - [ ] Проверить полный сайтовый flow: floating panel -> Touch ID -> signed auth ticket -> `sessionId`. Verify: ESF session is created or SOAP error is shown clearly.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.

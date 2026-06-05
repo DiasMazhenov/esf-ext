@@ -26,6 +26,7 @@ struct NativeResponse: Encodable {
     let authTicketXml: String?
     let sessionId: String?
     let diagnostics: String?
+    let webPassword: String?
 
     init(
         ok: Bool,
@@ -39,7 +40,8 @@ struct NativeResponse: Encodable {
         signedXml: String? = nil,
         authTicketXml: String? = nil,
         sessionId: String? = nil,
-        diagnostics: String? = nil
+        diagnostics: String? = nil,
+        webPassword: String? = nil
     ) {
         self.ok = ok
         self.command = command
@@ -53,6 +55,7 @@ struct NativeResponse: Encodable {
         self.authTicketXml = authTicketXml
         self.sessionId = sessionId
         self.diagnostics = diagnostics
+        self.webPassword = webPassword
     }
 }
 
@@ -695,6 +698,43 @@ func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
     )
 }
 
+func signWebTicketAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
+    let command = "signWebTicket"
+    let xml = try normalizedRequired(request.xml, name: "xml")
+
+    guard let config = try loadConfig(), hasPin() else {
+        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
+    }
+
+    let touchResponse = evaluateTouchId()
+    guard touchResponse.ok else {
+        return touchResponse
+    }
+
+    guard let pin = try readPin(), !pin.isEmpty else {
+        return NativeResponse(ok: false, command: command, message: "pin-not-found", timestamp: nowIso8601(), configured: false)
+    }
+
+    guard let webPassword = try readSoapPassword(), !webPassword.isEmpty else {
+        return NativeResponse(ok: false, command: command, message: "web-password-not-found", timestamp: nowIso8601(), configured: true)
+    }
+
+    let signResult = try runSignXml(xml: xml, certificatePath: config.certificatePath, pin: pin)
+    return NativeResponse(
+        ok: true,
+        command: command,
+        message: "web-ticket-signed",
+        timestamp: nowIso8601(),
+        configured: true,
+        iin: config.iin,
+        tin: config.tin,
+        certificatePath: config.certificatePath,
+        signedXml: signResult.signedXml,
+        diagnostics: signResult.diagnostics,
+        webPassword: webPassword
+    )
+}
+
 func createSignedSessionAfterTouchId() throws -> NativeResponse {
     let command = "createSignedSession"
     guard let config = try loadConfig(), hasPin() else {
@@ -827,6 +867,8 @@ func handle(_ data: Data) throws -> NativeResponse {
         return try createSessionFromSignedTicket(request)
     case "signXml":
         return try signXmlAfterTouchId(request)
+    case "signWebTicket":
+        return try signWebTicketAfterTouchId(request)
     case "chooseCertificate":
         return chooseCertificatePath()
     default:

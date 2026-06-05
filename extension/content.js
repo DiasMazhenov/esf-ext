@@ -141,6 +141,58 @@ const runOfficialWebLogin = async () => {
   }, 700);
 };
 
+const runTouchIdWebLogin = async () => {
+  setStatus('Получение web ticket сайта...', 'busy');
+  const ticketResponse = await fetch('/esf-web/ajax/login/ticket', {
+    credentials: 'include',
+    headers: { Accept: 'text/plain,*/*' }
+  });
+  const ticketXml = await ticketResponse.text();
+  if (!ticketResponse.ok || !ticketXml.trim().startsWith('<')) {
+    throw new Error(`Web ticket не получен: ${ticketXml.slice(0, 120)}`);
+  }
+
+  setStatus('Touch ID: подпись ticket и открытие пароля...', 'busy');
+  const signResponse = await chrome.runtime.sendMessage({ command: 'signWebTicket', xml: ticketXml });
+  if (!signResponse?.ok) {
+    throw new Error(signResponse?.error || 'Web ticket не подписан.');
+  }
+
+  const xmlDsig = signResponse.signedXml;
+  const password = signResponse.webPassword;
+  if (!xmlDsig || !password) {
+    throw new Error('Native host не вернул подпись или пароль ИС ЭСФ.');
+  }
+
+  setStatus('Проверка сертификата сайтом...', 'busy');
+  const certInfo = await postJsonText('/esf-web/ajax/login/xmlDsigCertInfo', xmlDsig);
+  const certificate = certInfo.base64Cert || certInfo.base64Pem;
+  const login = certInfo.iin;
+  if (!certificate || !login) {
+    throw new Error('Сайт не вернул ИИН/сертификат после подписи.');
+  }
+
+  setStatus('Вход в web-интерфейс ESF...', 'busy');
+  await postForm('/esf-web/ajax/login', {
+    login,
+    password,
+    certificate,
+    xmlDsig
+  });
+
+  setStatus('Web-вход выполнен, обновляю страницу...', 'ok');
+  window.setTimeout(() => {
+    window.location.assign('/esf-web/app');
+  }, 700);
+
+  return {
+    ok: true,
+    status: 'OK',
+    title: 'Web-вход выполнен',
+    detail: 'Страница ESF обновляется.'
+  };
+};
+
 const runNcaLayerLogin = async () => {
   setStatus('Получение auth ticket...', 'busy');
   const ticketResponse = await chrome.runtime.sendMessage({ command: 'createAuthTicket' });
@@ -171,6 +223,13 @@ const runNcaLayerWebLogin = async () => {
 };
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.command === 'loginViaTouchIdWeb') {
+    runTouchIdWebLogin()
+      .then(sendResponse)
+      .catch((error) => sendResponse({ ok: false, error: error.message }));
+    return true;
+  }
+
   if (message?.command !== 'loginViaPageNcaLayer') {
     return false;
   }
@@ -198,17 +257,12 @@ const ensureTouchIdPanel = () => {
   button.type = 'button';
   button.textContent = 'Войти через Touch ID';
 
-  const ncaButton = document.createElement('button');
-  ncaButton.type = 'button';
-  ncaButton.textContent = 'Войти через NCA Layer';
-
   const status = document.createElement('div');
   status.id = STATUS_ID;
   status.textContent = 'Расширение готово';
 
   const runLogin = async (command, busyText, fallbackText) => {
     button.disabled = true;
-    ncaButton.disabled = true;
     setStatus(busyText, 'busy');
     try {
       const response = await chrome.runtime.sendMessage({ command });
@@ -221,37 +275,14 @@ const ensureTouchIdPanel = () => {
       setStatus(error.message, 'error');
     } finally {
       button.disabled = false;
-      ncaButton.disabled = false;
-    }
-  };
-
-  const runPageNcaLogin = async () => {
-    button.disabled = true;
-    ncaButton.disabled = true;
-    try {
-      const response = await runNcaLayerWebLogin();
-      if (!response?.ok) {
-        setStatus(response?.error || 'Не удалось выполнить вход через NCA Layer.', 'error');
-        return;
-      }
-      setStatus(response.detail || response.title || 'Web-вход выполнен.', 'ok');
-    } catch (error) {
-      setStatus(error.message, 'error');
-    } finally {
-      button.disabled = false;
-      ncaButton.disabled = false;
     }
   };
 
   button.addEventListener('click', () => {
-    runLogin('login', 'Проверка Touch ID...', 'Не удалось выполнить вход через Touch ID.');
+    runLogin('loginViaTouchIdWeb', 'Проверка Touch ID...', 'Не удалось выполнить вход через Touch ID.');
   });
 
-  ncaButton.addEventListener('click', () => {
-    runPageNcaLogin();
-  });
-
-  panel.append(button, ncaButton, status);
+  panel.append(button, status);
   document.documentElement.append(panel);
   console.info('[ESF Touch ID Auth] Floating login panel injected');
 };
