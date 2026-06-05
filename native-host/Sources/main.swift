@@ -116,6 +116,16 @@ func writeDebugXml(_ name: String, _ xml: String) {
     }
 }
 
+func writeDebugText(_ name: String, _ text: String, ext: String = "txt") {
+    do {
+        let safeExt = ext.trimmingCharacters(in: CharacterSet(charactersIn: "."))
+        let url = try debugDir(create: true).appendingPathComponent("\(debugTimestamp())-\(name).\(safeExt)")
+        try text.write(to: url, atomically: true, encoding: .utf8)
+    } catch {
+        // Debug output must never break auth flow.
+    }
+}
+
 func loadConfig() throws -> EsfConfig? {
     let url = try configUrl(createDirectory: false)
     guard FileManager.default.fileExists(atPath: url.path) else {
@@ -292,6 +302,34 @@ func extractAttribute(_ elementName: String, _ attributeName: String, from xml: 
     return String(xml[valueRange])
 }
 
+func extractAttributes(_ elementName: String, _ attributeName: String, from xml: String) -> [String] {
+    let pattern = "<(?:[A-Za-z0-9_]+:)?\(elementName)\\b[^>]*\\s\(attributeName)=\"([^\"]+)\""
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        return []
+    }
+    let range = NSRange(xml.startIndex..<xml.endIndex, in: xml)
+    return regex.matches(in: xml, range: range).compactMap { match in
+        guard let valueRange = Range(match.range(at: 1), in: xml) else {
+            return nil
+        }
+        return String(xml[valueRange])
+    }
+}
+
+func extractElements(_ name: String, from xml: String) -> [String] {
+    let pattern = "<(?:[A-Za-z0-9_]+:)?\(name)\\b[^>]*>([\\s\\S]*?)</(?:[A-Za-z0-9_]+:)?\(name)>"
+    guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        return []
+    }
+    let range = NSRange(xml.startIndex..<xml.endIndex, in: xml)
+    return regex.matches(in: xml, range: range).compactMap { match in
+        guard let valueRange = Range(match.range(at: 1), in: xml) else {
+            return nil
+        }
+        return xmlUnescape(String(xml[valueRange]).trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+}
+
 func compactDiagnostics(_ value: String) -> String {
     value
         .split(whereSeparator: \.isNewline)
@@ -300,7 +338,11 @@ func compactDiagnostics(_ value: String) -> String {
         .joined(separator: "; ")
 }
 
-func postSoap(url: URL, soapAction: String, envelope: String) throws -> String {
+func postSoap(url: URL, soapAction: String, envelope: String, debugName: String? = nil) throws -> String {
+    if let debugName {
+        writeDebugXml("\(debugName)-request", envelope)
+    }
+
     var request = URLRequest(url: url)
     request.httpMethod = "POST"
     request.timeoutInterval = 30
@@ -324,6 +366,10 @@ func postSoap(url: URL, soapAction: String, envelope: String) throws -> String {
         }
 
         let body = String(data: data ?? Data(), encoding: .utf8) ?? ""
+        if let debugName {
+            writeDebugXml("\(debugName)-response", body)
+        }
+
         guard (200..<300).contains(httpResponse.statusCode) else {
             result = .failure(NativeHostError.invalidConfig("SOAP HTTP \(httpResponse.statusCode): \(body.prefix(500))"))
             return
@@ -334,6 +380,48 @@ func postSoap(url: URL, soapAction: String, envelope: String) throws -> String {
 
     semaphore.wait()
     return try result!.get()
+}
+
+func signedTicketTrace(config: EsfConfig, signedAuthTicket: String, source: String, soapAction: String, wsSecurityHeader: String) -> String {
+    let ticketIin = extractXmlElement("iin", from: signedAuthTicket) ?? "missing"
+    let timeMark = extractXmlElement("timeMark", from: signedAuthTicket) ?? "missing"
+    let state = extractXmlElement("state", from: signedAuthTicket) ?? ""
+    let signatureMethod = extractAttribute("SignatureMethod", "Algorithm", from: signedAuthTicket) ?? "missing"
+    let digestMethod = extractAttribute("DigestMethod", "Algorithm", from: signedAuthTicket) ?? "missing"
+    let canonicalizationMethod = extractAttribute("CanonicalizationMethod", "Algorithm", from: signedAuthTicket) ?? "missing"
+    let transforms = extractAttributes("Transform", "Algorithm", from: signedAuthTicket)
+    let signatureValue = extractXmlElement("SignatureValue", from: signedAuthTicket) ?? ""
+    let certificateValue = extractXmlElement("X509Certificate", from: signedAuthTicket) ?? ""
+    let referenceUri = extractAttribute("Reference", "URI", from: signedAuthTicket) ?? "missing"
+    let keyInfoCount = extractElements("KeyInfo", from: signedAuthTicket).count
+
+    let fields: [(String, String)] = [
+        ("source", source),
+        ("endpoint", "\(esfWebUrl)/ws/api1/SessionService"),
+        ("soapAction", soapAction.isEmpty ? "empty" : soapAction),
+        ("wsSecurityHeader", wsSecurityHeader),
+        ("configIinLength", "\(config.iin.count)"),
+        ("configTinLength", "\(config.tin.count)"),
+        ("ticketIinMatchesConfig", "\(ticketIin == config.iin)"),
+        ("ticketIinPresent", "\(ticketIin != "missing")"),
+        ("timeMark", timeMark),
+        ("stateLength", "\(state.count)"),
+        ("signedTicketLength", "\(signedAuthTicket.count)"),
+        ("signatureMethod", signatureMethod),
+        ("digestMethod", digestMethod),
+        ("canonicalizationMethod", canonicalizationMethod),
+        ("referenceUri", referenceUri),
+        ("transformCount", "\(transforms.count)"),
+        ("transforms", transforms.joined(separator: " | ")),
+        ("signatureValueLength", "\(signatureValue.count)"),
+        ("x509CertificateLength", "\(certificateValue.count)"),
+        ("keyInfoCount", "\(keyInfoCount)")
+    ]
+
+    let body = fields
+        .map { "\"\($0.0)\": \"\(xmlEscape($0.1))\"" }
+        .joined(separator: ",\n  ")
+    return "{\n  \(body)\n}"
 }
 
 func evaluateTouchId() -> NativeResponse {
@@ -460,6 +548,8 @@ func createAuthTicket() throws -> NativeResponse {
 func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostics: String) throws -> String {
     writeDebugXml("signed-auth-ticket", signedAuthTicket)
     let endpoint = URL(string: "\(esfWebUrl)/ws/api1/SessionService")!
+    let soapAction = ""
+    let wsSecurityHeader = "empty"
     let envelope = """
     <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:esf="esf">
       <soapenv:Header/>
@@ -471,17 +561,26 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostic
       </soapenv:Body>
     </soapenv:Envelope>
     """
-    writeDebugXml("create-session-signed-request", envelope)
 
     let signatureMethod = extractAttribute("SignatureMethod", "Algorithm", from: signedAuthTicket) ?? "unknown"
+    let trace = signedTicketTrace(
+        config: config,
+        signedAuthTicket: signedAuthTicket,
+        source: diagnostics,
+        soapAction: soapAction,
+        wsSecurityHeader: wsSecurityHeader
+    )
+    writeDebugText("create-session-signed-trace", trace, ext: "json")
+
     do {
-        let responseXml = try postSoap(url: endpoint, soapAction: "", envelope: envelope)
+        let responseXml = try postSoap(url: endpoint, soapAction: soapAction, envelope: envelope, debugName: "create-session-signed")
         guard let sessionId = extractXmlElement("sessionId", from: responseXml), !sessionId.isEmpty else {
             throw NativeHostError.invalidConfig("sessionId not found in SOAP response")
         }
         return sessionId
     } catch NativeHostError.invalidConfig(let message) {
-        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; wsSecurityHeader=empty; tinLength=\(config.tin.count); signatureMethod=\(signatureMethod); \(diagnostics)")
+        let debugPath = (try? debugDir(create: true).path) ?? "unavailable"
+        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; wsSecurityHeader=empty; tinLength=\(config.tin.count); signatureMethod=\(signatureMethod); debugTrace=create-session-signed-trace; debugDir=\(debugPath); \(diagnostics)")
     }
 }
 
