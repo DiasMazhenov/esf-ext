@@ -128,6 +128,26 @@ const signXmlViaNcaLayer = async (xml) => sendNcaLayerRequest({
   args: ['PKCS12', 'SIGNATURE', xml, '', '']
 });
 
+const sendActiveEsfTabCommand = async (payload) => {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const activeTab = tabs[0];
+  if (!activeTab?.id || !activeTab.url?.startsWith('https://esf.gov.kz/')) {
+    return {
+      ok: false,
+      error: 'Откройте активную вкладку ESF и нажмите кнопку снова. NCALayer из popup работает через страницу ESF.'
+    };
+  }
+
+  try {
+    return await chrome.tabs.sendMessage(activeTab.id, payload);
+  } catch (error) {
+    return {
+      ok: false,
+      error: `Не удалось связаться со страницей ESF. Перезагрузите вкладку ESF. ${error.message}`
+    };
+  }
+};
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   handleCommand(message).then(sendResponse).catch((error) => {
     sendResponse({ ok: false, error: error.message });
@@ -224,6 +244,10 @@ async function handleCommand(message) {
       };
     }
     case 'loginViaNcaLayer': {
+      if (message.useActiveTab !== false && !message.signedAuthTicket) {
+        return sendActiveEsfTabCommand({ command: 'loginViaPageNcaLayer' });
+      }
+
       const signedAuthTicket = message.signedAuthTicket || await (async () => {
         const ticketResponse = await sendNativeCommand('createAuthTicket');
         if (!ticketResponse?.ok) {

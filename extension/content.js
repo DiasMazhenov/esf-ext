@@ -79,6 +79,17 @@ const runNcaLayerLogin = async () => {
   return chrome.runtime.sendMessage({ command: 'loginViaNcaLayer', signedAuthTicket });
 };
 
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.command !== 'loginViaPageNcaLayer') {
+    return false;
+  }
+
+  runNcaLayerLogin()
+    .then(sendResponse)
+    .catch((error) => sendResponse({ ok: false, error: error.message }));
+  return true;
+});
+
 const ensureTouchIdPanel = () => {
   if (!pageHasAuthModal()) {
     removePanel();
