@@ -471,6 +471,7 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostic
       </soapenv:Body>
     </soapenv:Envelope>
     """
+    writeDebugXml("create-session-signed-request", envelope)
 
     let signatureMethod = extractAttribute("SignatureMethod", "Algorithm", from: signedAuthTicket) ?? "unknown"
     do {
@@ -480,7 +481,7 @@ func createSessionSigned(config: EsfConfig, signedAuthTicket: String, diagnostic
         }
         return sessionId
     } catch NativeHostError.invalidConfig(let message) {
-        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; signatureMethod=\(signatureMethod); \(diagnostics)")
+        throw NativeHostError.invalidConfig("\(message); createSessionSigned soapAction=empty; wsSecurityHeader=empty; tinLength=\(config.tin.count); signatureMethod=\(signatureMethod); \(diagnostics)")
     }
 }
 

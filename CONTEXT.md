@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.23
+0.1.24
 ```
 
 Next verification step:
@@ -258,6 +258,7 @@ Latest fix:
 
 ```text
 Popup `Через NCA` now delegates signing to the active ESF tab content script, so NCALayer signing also runs in page context.
+`createSessionSigned` now saves the full SOAP request as `create-session-signed-request` debug XML and marks empty SOAP WS-Security header in errors.
 ```
 
 ### Java/JDK
@@ -356,9 +357,10 @@ Completed:
 - site `Войти через NCA Layer` signs inside the ESF page context, then sends the signed ticket to native host;
 - NCALayer greeting messages containing only `result.version` are ignored in both page bridge and service worker;
 - popup `Через NCA` uses the active ESF tab and content script command `loginViaPageNcaLayer`; it no longer signs from service worker by default;
+- `createSessionSigned` saves the full SOAP request to debug and adds `wsSecurityHeader=empty`/`tinLength` diagnostics to SOAP errors;
 - native host accepts external signed tickets through `createSessionFromSignedTicket`;
 - local debug XML snapshots are saved under Application Support for comparison and are not committed;
-- extension version bumped to display `0.1.23` (`manifest.version` is `0.1.23`, `manifest.version_name` is `0.1.23`).
+- extension version bumped to display `0.1.24` (`manifest.version` is `0.1.24`, `manifest.version_name` is `0.1.24`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
