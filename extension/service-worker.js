@@ -147,10 +147,17 @@ const signXmlViaNcaLayer = async (xml) => sendNcaLayerRequest({
 const sendActiveEsfTabCommand = async (payload) => {
   const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
   const activeTab = tabs[0];
-  if (!activeTab?.id || !activeTab.url?.startsWith('https://esf.gov.kz/')) {
+  let activeUrl;
+  try {
+    activeUrl = activeTab?.url ? new URL(activeTab.url) : null;
+  } catch {
+    activeUrl = null;
+  }
+
+  if (!activeTab?.id || activeUrl?.protocol !== 'https:' || activeUrl.hostname !== 'esf.gov.kz') {
     return {
       ok: false,
-      error: 'Откройте активную вкладку ESF и нажмите кнопку снова. NCALayer из popup работает через страницу ESF.'
+      error: 'Откройте активную вкладку ESF и нажмите вход снова. Web-вход выполняется через страницу ESF.'
     };
   }
 
