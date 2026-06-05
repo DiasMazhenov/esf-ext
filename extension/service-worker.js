@@ -7,6 +7,28 @@ const NCA_LAYER_ENDPOINTS = [
 
 const isNcaGreeting = (response) => Boolean(response?.result?.version && !response.responseObject);
 
+const extractStringPayload = (payload) => {
+  if (typeof payload === 'string' && payload.trim()) {
+    return payload;
+  }
+
+  if (Array.isArray(payload)) {
+    for (const item of payload) {
+      const nested = extractStringPayload(item);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  if (payload && typeof payload === 'object') {
+    return extractStringPayload(payload.xml ?? payload.signedXml ?? payload.result ?? payload.body ?? payload.data);
+  }
+
+  return null;
+};
+
 const readSession = async () => {
   const result = await chrome.storage.session.get(SESSION_KEY);
   return result[SESSION_KEY] || null;
@@ -44,16 +66,10 @@ const extractNcaPayload = (response) => {
     throw new Error(response.message || response.error || 'NCALayer command failed.');
   }
 
-  const payload = response.responseObject ?? response.result ?? response.body ?? response.data;
-  if (typeof payload === 'string' && payload.trim()) {
-    return payload;
-  }
-
-  if (payload && typeof payload === 'object') {
-    const nested = payload.xml ?? payload.signedXml ?? payload.result;
-    if (typeof nested === 'string' && nested.trim()) {
-      return nested;
-    }
+  const payload = response.responseObject ?? response.result ?? response.body?.result ?? response.body ?? response.data;
+  const signedXml = extractStringPayload(payload);
+  if (signedXml) {
+    return signedXml;
   }
 
   throw new Error(`NCALayer response не содержит signed XML: ${JSON.stringify(response).slice(0, 300)}`);

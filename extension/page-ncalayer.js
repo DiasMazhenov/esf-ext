@@ -36,6 +36,28 @@
     mode === 'official-auth' ? createOfficialAuthSignRequest(xml) : createSoapSignRequest(xml)
   );
 
+  const extractStringPayload = (payload) => {
+    if (typeof payload === 'string' && payload.trim()) {
+      return payload;
+    }
+
+    if (Array.isArray(payload)) {
+      for (const item of payload) {
+        const nested = extractStringPayload(item);
+        if (nested) {
+          return nested;
+        }
+      }
+      return null;
+    }
+
+    if (payload && typeof payload === 'object') {
+      return extractStringPayload(payload.xml ?? payload.signedXml ?? payload.result ?? payload.body ?? payload.data);
+    }
+
+    return null;
+  };
+
   const extractPayload = (response) => {
     if (!response || typeof response !== 'object') {
       throw new Error('NCALayer вернул пустой ответ.');
@@ -50,15 +72,9 @@
     }
 
     const payload = response.responseObject ?? response.result ?? response.body?.result ?? response.body ?? response.data;
-    if (typeof payload === 'string' && payload.trim()) {
-      return payload;
-    }
-
-    if (payload && typeof payload === 'object') {
-      const nested = payload.xml ?? payload.signedXml ?? payload.result;
-      if (typeof nested === 'string' && nested.trim()) {
-        return nested;
-      }
+    const signedXml = extractStringPayload(payload);
+    if (signedXml) {
+      return signedXml;
     }
 
     throw new Error(`NCALayer response не содержит signed XML: ${JSON.stringify(response).slice(0, 300)}`);
