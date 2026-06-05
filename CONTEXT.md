@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.28
+0.1.29
 ```
 
 Next verification step:
@@ -263,6 +263,7 @@ Popup `Через NCA` now delegates signing to the active ESF tab content scrip
 `createSessionSigned` now adds official WS-Security UsernameToken when optional SOAP password is saved in Keychain.
 NCA site flow now continues after SOAP `sessionId` into ESF web login: `/ajax/login/ticket` -> NCALayer official auth signature -> `/ajax/login/xmlDsigCertInfo` -> `/ajax/login` -> reload app.
 NCALayer parser now accepts signed XML returned as `body.result[0]`, which is how the official auth dialog can return `<authSign>...`.
+NCA web-login prompt now calls the second password the ESF web cabinet password, not SOAP password, and states it is not saved by the extension.
 ```
 
 ### Java/JDK
@@ -368,7 +369,8 @@ Completed:
 - native host accepts external signed tickets through `createSessionFromSignedTicket`;
 - local debug XML snapshots are saved under Application Support for comparison and are not committed;
 - NCALayer response parser accepts array payloads such as `body.result[0]` for official auth signatures;
-- extension version bumped to display `0.1.28` (`manifest.version` is `0.1.28`, `manifest.version_name` is `0.1.28`).
+- NCA web-login status/prompt now uses `API session` and `web cabinet password` wording to avoid confusing it with SOAP password;
+- extension version bumped to display `0.1.29` (`manifest.version` is `0.1.29`, `manifest.version_name` is `0.1.29`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.

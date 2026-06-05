@@ -122,7 +122,7 @@ const runOfficialWebLogin = async () => {
     throw new Error('Сайт не вернул ИИН/сертификат после подписи.');
   }
 
-  const password = window.prompt('Введите пароль ИС ЭСФ для web-входа');
+  const password = window.prompt('Введите пароль от web-кабинета ИС ЭСФ. Он нужен сайту для /ajax/login и не сохраняется расширением.');
   if (!password) {
     throw new Error('Пароль ИС ЭСФ не введён.');
   }
@@ -158,9 +158,9 @@ const runNcaLayerLogin = async () => {
 const runNcaLayerWebLogin = async () => {
   const response = await runNcaLayerLogin();
   if (!response?.ok) {
-    throw new Error(response?.error || 'Не удалось создать SOAP session через NCA Layer.');
+    throw new Error(response?.error || 'Не удалось создать API session через NCA Layer.');
   }
-  setStatus('SOAP session создана. Запускаю web-вход...', 'busy');
+  setStatus('API session создана. Запускаю web-вход...', 'busy');
   await runOfficialWebLogin();
   return {
     ok: true,
