@@ -36,7 +36,7 @@ const ensurePageBridge = () => {
   document.documentElement.append(script);
 };
 
-const signXmlViaPageNcaLayer = (xml) => new Promise((resolve, reject) => {
+const signXmlViaPageNcaLayer = (xml, mode = 'soap') => new Promise((resolve, reject) => {
   ensurePageBridge();
 
   const requestId = `nca-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -62,8 +62,84 @@ const signXmlViaPageNcaLayer = (xml) => new Promise((resolve, reject) => {
   }
 
   window.addEventListener('message', handleResponse);
-  window.postMessage({ type: NCA_REQUEST_TYPE, requestId, xml }, window.location.origin);
+  window.postMessage({ type: NCA_REQUEST_TYPE, requestId, xml, mode }, window.location.origin);
 });
+
+const postForm = async (url, values) => {
+  const body = new FormData();
+  Object.entries(values).forEach(([key, value]) => body.append(key, value));
+  const response = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    body
+  });
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { raw: text };
+  }
+  if (!response.ok || data?.success === false) {
+    throw new Error(data?.message || data?.error || text || `HTTP ${response.status}`);
+  }
+  return data;
+};
+
+const postJsonText = async (url, text) => {
+  const response = await fetch(url, {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: text
+  });
+  const data = await response.json();
+  if (!response.ok || data?.success === false) {
+    throw new Error(data?.message || data?.error || `HTTP ${response.status}`);
+  }
+  return data;
+};
+
+const runOfficialWebLogin = async () => {
+  setStatus('Получение web ticket сайта...', 'busy');
+  const ticketResponse = await fetch('/esf-web/ajax/login/ticket', {
+    credentials: 'include',
+    headers: { Accept: 'text/plain,*/*' }
+  });
+  const ticketXml = await ticketResponse.text();
+  if (!ticketResponse.ok || !ticketXml.trim().startsWith('<')) {
+    throw new Error(`Web ticket не получен: ${ticketXml.slice(0, 120)}`);
+  }
+
+  setStatus('Подпись web ticket через NCALayer...', 'busy');
+  const xmlDsig = await signXmlViaPageNcaLayer(ticketXml, 'official-auth');
+
+  setStatus('Проверка сертификата сайтом...', 'busy');
+  const certInfo = await postJsonText('/esf-web/ajax/login/xmlDsigCertInfo', xmlDsig);
+  const certificate = certInfo.base64Cert || certInfo.base64Pem;
+  const login = certInfo.iin;
+  if (!certificate || !login) {
+    throw new Error('Сайт не вернул ИИН/сертификат после подписи.');
+  }
+
+  const password = window.prompt('Введите пароль ИС ЭСФ для web-входа');
+  if (!password) {
+    throw new Error('Пароль ИС ЭСФ не введён.');
+  }
+
+  setStatus('Вход в web-интерфейс ESF...', 'busy');
+  await postForm('/esf-web/ajax/login', {
+    login,
+    password,
+    certificate,
+    xmlDsig
+  });
+
+  setStatus('Web-вход выполнен, обновляю страницу...', 'ok');
+  window.setTimeout(() => {
+    window.location.assign('/esf-web/app');
+  }, 700);
+};
 
 const runNcaLayerLogin = async () => {
   setStatus('Получение auth ticket...', 'busy');
@@ -79,12 +155,27 @@ const runNcaLayerLogin = async () => {
   return chrome.runtime.sendMessage({ command: 'loginViaNcaLayer', signedAuthTicket });
 };
 
+const runNcaLayerWebLogin = async () => {
+  const response = await runNcaLayerLogin();
+  if (!response?.ok) {
+    throw new Error(response?.error || 'Не удалось создать SOAP session через NCA Layer.');
+  }
+  setStatus('SOAP session создана. Запускаю web-вход...', 'busy');
+  await runOfficialWebLogin();
+  return {
+    ok: true,
+    status: 'OK',
+    title: 'Web-вход выполнен',
+    detail: 'Страница ESF обновляется.'
+  };
+};
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.command !== 'loginViaPageNcaLayer') {
     return false;
   }
 
-  runNcaLayerLogin()
+  runNcaLayerWebLogin()
     .then(sendResponse)
     .catch((error) => sendResponse({ ok: false, error: error.message }));
   return true;
@@ -138,12 +229,12 @@ const ensureTouchIdPanel = () => {
     button.disabled = true;
     ncaButton.disabled = true;
     try {
-      const response = await runNcaLayerLogin();
+      const response = await runNcaLayerWebLogin();
       if (!response?.ok) {
         setStatus(response?.error || 'Не удалось выполнить вход через NCA Layer.', 'error');
         return;
       }
-      setStatus(response.detail || response.title || 'Сессия создана через NCA Layer.', 'ok');
+      setStatus(response.detail || response.title || 'Web-вход выполнен.', 'ok');
     } catch (error) {
       setStatus(error.message, 'error');
     } finally {

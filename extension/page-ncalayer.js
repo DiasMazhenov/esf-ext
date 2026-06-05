@@ -5,6 +5,37 @@
 
   const isNcaGreeting = (response) => Boolean(response?.result?.version && !response.responseObject);
 
+  const createSoapSignRequest = (xml) => ({
+    module: 'kz.gov.pki.knca.commonUtils',
+    method: 'signXml',
+    args: ['PKCS12', 'SIGNATURE', xml, '', '']
+  });
+
+  const createOfficialAuthSignRequest = (xml) => ({
+    module: 'kz.gov.pki.knca.basics',
+    method: 'sign',
+    args: {
+      format: 'xml',
+      data: xml,
+      signingParams: {
+        decode: 'false',
+        encapsulate: 'true',
+        digested: 'false',
+        tsaProfile: null,
+        outputCert: 'true'
+      },
+      signerParams: {
+        extKeyUsageOids: ['1.3.6.1.5.5.7.3.2'],
+        chain: []
+      },
+      locale: 'ru'
+    }
+  });
+
+  const createSignRequest = (xml, mode) => (
+    mode === 'official-auth' ? createOfficialAuthSignRequest(xml) : createSoapSignRequest(xml)
+  );
+
   const extractPayload = (response) => {
     if (!response || typeof response !== 'object') {
       throw new Error('NCALayer вернул пустой ответ.');
@@ -18,7 +49,7 @@
       throw new Error(response.message || response.error || 'NCALayer command failed.');
     }
 
-    const payload = response.responseObject ?? response.result ?? response.body ?? response.data;
+    const payload = response.responseObject ?? response.result ?? response.body?.result ?? response.body ?? response.data;
     if (typeof payload === 'string' && payload.trim()) {
       return payload;
     }
@@ -102,13 +133,9 @@
       return;
     }
 
-    const { requestId, xml } = event.data;
+    const { requestId, xml, mode } = event.data;
     try {
-      const signedXml = await sendRequest({
-        module: 'kz.gov.pki.knca.commonUtils',
-        method: 'signXml',
-        args: ['PKCS12', 'SIGNATURE', xml, '', '']
-      });
+      const signedXml = await sendRequest(createSignRequest(xml, mode));
       window.postMessage({ type: RESPONSE_TYPE, requestId, ok: true, signedXml }, window.location.origin);
     } catch (error) {
       window.postMessage({ type: RESPONSE_TYPE, requestId, ok: false, error: error.message }, window.location.origin);
