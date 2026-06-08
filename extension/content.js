@@ -37,6 +37,17 @@ const dismissNcaLayerWarningModal = () => {
   }
 };
 
+const pageHasAuthenticatedHeader = () => {
+  const hasUserInfo = Boolean(
+    document.querySelector('[class*="UserInfoT2_wrapper"], [class*="TaxpayerLayoutHeader_userInfo"]')
+  );
+  const hasTin = Boolean(document.querySelector('[class*="UserInfoT2_tin"]'));
+  const hasLogout = [...document.querySelectorAll('button')]
+    .some((buttonElement) => normalizeText(buttonElement.innerText) === 'Выйти');
+
+  return (hasUserInfo || hasTin) && hasLogout;
+};
+
 const setStatus = (message, type = 'idle') => {
   const status = document.querySelector(`#${STATUS_ID}`);
   if (!status) {
@@ -275,6 +286,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 const ensureTouchIdPanel = () => {
   dismissNcaLayerWarningModal();
+
+  if (pageHasAuthenticatedHeader()) {
+    removePanel();
+    return;
+  }
 
   if (document.querySelector(`#${TOUCH_ID_PANEL_ID}`)) {
     return;
