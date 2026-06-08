@@ -6,11 +6,6 @@ const NCA_RESPONSE_TYPE = 'ESF_TOUCHID_NCA_SIGN_RESPONSE';
 
 const normalizeText = (value) => (value || '').replace(/\s+/g, ' ').trim();
 
-const pageHasAuthModal = () => {
-  const bodyText = normalizeText(document.body?.innerText);
-  return bodyText.includes('Способ авторизации') && bodyText.includes('Войти с помощью ЭЦП');
-};
-
 const dismissNcaLayerWarningModal = () => {
   const dialogs = [...document.querySelectorAll('.ReactModal__Overlay, [role="dialog"]')];
   for (const dialog of dialogs) {
@@ -280,11 +275,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 const ensureTouchIdPanel = () => {
   dismissNcaLayerWarningModal();
-
-  if (!pageHasAuthModal()) {
-    removePanel();
-    return;
-  }
 
   if (document.querySelector(`#${TOUCH_ID_PANEL_ID}`)) {
     return;

@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.34
+0.1.35
 ```
 
 Next verification step:
@@ -270,6 +270,7 @@ Popup was redesigned with accent `#006196`, extension icons, logo near `ESF Bio 
 Primary labels now say `биометрия` instead of `Touch ID`; NCALayer bridge is no longer auto-injected and remains debug-only fallback.
 Content script auto-dismisses the ESF NCALayer warning modal by clicking its `OK` button when the exact warning/link text is detected.
 Accent color changed to `#006196`; ESF page widget is now a bottom-right compact popup with only the extension logo as the biometric login button.
+The bottom-right logo widget is now always injected on ESF pages, including `/esf-web/app`; it no longer waits for the auth-method modal text.
 ```
 
 ### Java/JDK
@@ -386,7 +387,8 @@ Completed:
 - ESF NCALayer warning modal is auto-dismissed by exact text match so it does not block the biometric login panel;
 - accent color changed to `#006196` in popup and ESF page widget;
 - ESF page widget moved to bottom-right and now shows only logo button, which starts the same biometric web-login flow;
-- extension version bumped to display `0.1.34` (`manifest.version` is `0.1.34`, `manifest.version_name` is `0.1.34`).
+- ESF page widget no longer depends on detecting the auth modal and appears on `/esf-web/app`;
+- extension version bumped to display `0.1.35` (`manifest.version` is `0.1.35`, `manifest.version_name` is `0.1.35`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
