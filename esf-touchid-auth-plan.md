@@ -12,7 +12,7 @@
 - [x] Добавить настройку ЭЦП: ИИН, путь к `.p12`, PIN в macOS Keychain; `tin` для API выводится из ИИН. Verify: native `configStatus` возвращает `not-configured/configured`, PIN не хранится в Chrome.
 - [x] Добавить выбор `.p12` через native macOS file picker. Verify: popup button `Выбрать` вызывает native command `chooseCertificate`.
 - [x] Заменить file picker на AppleScript `choose file`, потому что `NSOpenPanel` из Chrome native host не открывался видимо. Verify: Swift build passes.
-- [x] Ввести версионирование display-формата `0.1.32`. Verify: manifest `version_name` = `0.1.32`, техническая Chrome `version` = `0.1.32`.
+- [x] Ввести версионирование display-формата `0.1.33`. Verify: manifest `version_name` = `0.1.33`, техническая Chrome `version` = `0.1.33`.
 - [x] Добавить кнопку `Войти через биометрию` в модалку способов авторизации ИС ЭСФ через content script. Verify: content script watches modal by text `Способ авторизации` and injects button.
 - [x] Исправить content script match для сайта ИС ЭСФ. Verify: `matches` uses `https://esf.gov.kz/*`, not port-specific pattern.
 - [x] Усилить injection кнопки в модалку ИС ЭСФ. Verify: content script finds existing `Войти с помощью ЭЦП` button globally and injects into its parent.
@@ -51,6 +51,7 @@
 - [x] Добавить manifest icons и logo в popup из `extension/icons`. Verify: manifest parse pass.
 - [x] Пометить NCA как debug-only и убрать auto-inject `page-ncalayer.js` из обычного flow. Verify: JS syntax pass.
 - [x] Обновить дизайн popup с акцентом `#F6663E` и icon на кнопке сохранения. Verify: CSS/manifest present.
+- [x] Автоматически закрывать назойливую ESF модалку с предупреждением про NCALayer. Verify: JS syntax pass.
 - [ ] Сравнить debug XML: SDK signed ticket vs NCALayer signed ticket. Verify: есть локальные debug-файлы в Application Support.
 - [ ] Проверить полный сайтовый flow: floating panel -> Touch ID -> signed auth ticket -> `sessionId`. Verify: ESF session is created or SOAP error is shown clearly.
 - [ ] Реализовать session manager: хранить `sessionId`, проверять `currentSessionStatus`, переоткрывать при `CLOSED/NOT_FOUND`. Verify: мок/тестовый вызов показывает reuse и renew.

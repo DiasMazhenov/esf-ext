@@ -11,6 +11,37 @@ const pageHasAuthModal = () => {
   return bodyText.includes('Способ авторизации') && bodyText.includes('Войти с помощью ЭЦП');
 };
 
+const dismissNcaLayerWarningModal = () => {
+  const dialogs = [...document.querySelectorAll('.ReactModal__Overlay, [role="dialog"]')];
+  for (const dialog of dialogs) {
+    if (dialog.dataset.esfBioNcaWarningDismissed === 'true') {
+      continue;
+    }
+
+    const text = normalizeText(dialog.innerText);
+    const isNcaWarning = text.includes('Убедитесь, что приложение') &&
+      text.includes('NCALayer') &&
+      text.includes('pki.gov.kz/ncalayer');
+    if (!isNcaWarning) {
+      continue;
+    }
+
+    dialog.dataset.esfBioNcaWarningDismissed = 'true';
+    const okButton = [...dialog.querySelectorAll('button')]
+      .find((buttonElement) => normalizeText(buttonElement.innerText) === 'OK');
+    if (okButton) {
+      okButton.click();
+      return;
+    }
+
+    const overlay = dialog.classList.contains('ReactModal__Overlay')
+      ? dialog
+      : dialog.closest('.ReactModal__Overlay');
+    overlay?.remove();
+    return;
+  }
+};
+
 const setStatus = (message, type = 'idle') => {
   const status = document.querySelector(`#${STATUS_ID}`);
   if (!status) {
@@ -242,6 +273,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 });
 
 const ensureTouchIdPanel = () => {
+  dismissNcaLayerWarningModal();
+
   if (!pageHasAuthModal()) {
     removePanel();
     return;

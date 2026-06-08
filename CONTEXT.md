@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.32
+0.1.33
 ```
 
 Next verification step:
@@ -268,6 +268,7 @@ Primary `Войти через биометрию` flow no longer uses NCALayer:
 Popup active-tab validation now accepts `https://esf.gov.kz:8443/...` by checking URL hostname instead of string prefix, and stale NCALayer wording was removed from the error.
 Popup was redesigned with accent `#F6663E`, extension icons, logo near `ESF Bio Auth`, hidden config form when status is `Ready/OK`, and a `Ввести новые данные` edit button.
 Primary labels now say `биометрия` instead of `Touch ID`; NCALayer bridge is no longer auto-injected and remains debug-only fallback.
+Content script auto-dismisses the ESF NCALayer warning modal by clicking its `OK` button when the exact warning/link text is detected.
 ```
 
 ### Java/JDK
@@ -381,7 +382,8 @@ Completed:
 - manifest uses extension icons from `extension/icons` and popup shows the logo near `ESF Bio Auth`;
 - visible labels were renamed from Touch ID to biometrics, while native host still uses macOS LocalAuthentication;
 - NCALayer fallback is marked debug-only and the page bridge is no longer auto-injected during normal login;
-- extension version bumped to display `0.1.32` (`manifest.version` is `0.1.32`, `manifest.version_name` is `0.1.32`).
+- ESF NCALayer warning modal is auto-dismissed by exact text match so it does not block the biometric login panel;
+- extension version bumped to display `0.1.33` (`manifest.version` is `0.1.33`, `manifest.version_name` is `0.1.33`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
