@@ -1,14 +1,14 @@
 :root {
   color-scheme: light;
-  --bg: #fff7f4;
+  --bg: #f3f9fc;
   --panel: #ffffff;
-  --panel-soft: #fff1ec;
+  --panel-soft: #eef7fb;
   --text: #1f2933;
   --muted: #697586;
-  --line: #eadbd5;
-  --primary: #f6663e;
-  --primary-dark: #df4f2a;
-  --primary-soft: rgba(246, 102, 62, 0.13);
+  --line: #d8e8f0;
+  --primary: #006196;
+  --primary-dark: #004f7a;
+  --primary-soft: rgba(0, 97, 150, 0.13);
   --danger: #b42318;
   --warning: #b54708;
   --ok: #027a48;
@@ -27,7 +27,7 @@ body {
   width: 360px;
   margin: 0;
   background:
-    linear-gradient(180deg, #fff8f5 0%, #ffffff 44%),
+    linear-gradient(180deg, #f3f9fc 0%, #ffffff 44%),
     var(--bg);
   color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -50,7 +50,7 @@ body {
   width: 42px;
   height: 42px;
   border-radius: 10px;
-  box-shadow: 0 10px 22px rgba(246, 102, 62, 0.22);
+  box-shadow: 0 10px 22px rgba(0, 97, 150, 0.22);
 }
 
 .header-copy {
@@ -246,7 +246,7 @@ button:disabled {
 
 .secondary:hover {
   background: var(--panel-soft);
-  border-color: #f6b29f;
+  border-color: #9ac9df;
 }
 
 .danger {

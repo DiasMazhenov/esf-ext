@@ -45,6 +45,12 @@ const dismissNcaLayerWarningModal = () => {
 const setStatus = (message, type = 'idle') => {
   const status = document.querySelector(`#${STATUS_ID}`);
   if (!status) {
+    const panelButton = document.querySelector(`#${TOUCH_ID_PANEL_ID} button`);
+    if (panelButton) {
+      panelButton.title = message;
+      panelButton.dataset.type = type;
+      panelButton.setAttribute('aria-label', message);
+    }
     return;
   }
   status.textContent = message;
@@ -289,11 +295,12 @@ const ensureTouchIdPanel = () => {
 
   const button = document.createElement('button');
   button.type = 'button';
-  button.textContent = 'Войти через биометрию';
+  button.title = 'Войти через биометрию';
+  button.setAttribute('aria-label', 'Войти через биометрию');
 
-  const status = document.createElement('div');
-  status.id = STATUS_ID;
-  status.textContent = 'Расширение готово';
+  const logo = document.createElement('img');
+  logo.src = chrome.runtime.getURL('icons/icon-48.png');
+  logo.alt = '';
 
   const runLogin = async (command, busyText, fallbackText) => {
     button.disabled = true;
@@ -316,7 +323,8 @@ const ensureTouchIdPanel = () => {
     runLogin('loginViaTouchIdWeb', 'Проверка биометрии...', 'Не удалось выполнить вход через биометрию.');
   });
 
-  panel.append(button, status);
+  button.append(logo);
+  panel.append(button);
   document.documentElement.append(panel);
   console.info('[ESF Bio Auth] Floating login panel injected');
 };
