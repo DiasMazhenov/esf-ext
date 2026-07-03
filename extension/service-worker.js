@@ -207,17 +207,22 @@ async function handleCommand(message) {
         ok: true,
         status: 'OK',
         title: 'Network trace',
-        detail: `${trace.length} entries`,
+        detail: trace.length
+          ? `${trace.length} entries`
+          : '0 entries. Если действие уже было выполнено, перезагрузите вкладку ESF после reload расширения и повторите запись.',
         trace
       };
     }
     case 'clearNetworkDebug': {
       await clearNetworkDebugTrace();
+      const installResponse = await sendActiveEsfTabCommand({ command: 'installNetworkDebug' });
       return {
         ok: true,
         status: 'OK',
         title: 'Network trace очищен',
-        detail: 'Можно начинать чистую запись.'
+        detail: installResponse?.ok
+          ? 'Debug trace активен на текущей вкладке ESF. Можно начинать чистую запись.'
+          : `Trace очищен. ${installResponse?.error || 'Перезагрузите вкладку ESF, чтобы включить запись.'}`
       };
     }
     case 'saveConfig': {

@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.37
+0.1.38
 ```
 
 Next verification step:
@@ -274,6 +274,7 @@ The bottom-right logo widget is now always injected on ESF pages, including `/es
 The bottom-right logo widget is hidden when the ESF authenticated header is detected by `UserInfoT2`/TIN plus the `Выйти` button.
 Temporary network debug capture is enabled on ESF pages: page-context script logs fetch/XHR method, URL, request body, status, response text, and calls to `selectSignMethod`, `tumAdapter.signRequest`, `getQRSignSignature` into `chrome.storage.local`; popup can clear/download the trace JSON.
 `signing.js` shows AWP QR signing flow uses `getQRSignSignature(data, docType)` and sends hashes to `mobileDocSign/sign/qr?wssId=...&documentTypeForSign=...`; ECP flow still needs trace of the callback/tumAdapter path.
+If downloaded trace is empty, likely the ESF tab still had an older content script; popup `Очистить` now also asks the active ESF tab to install the debug bridge and reports if the tab must be reloaded.
 ```
 
 ### Java/JDK
@@ -393,7 +394,8 @@ Completed:
 - ESF page widget no longer depends on detecting the auth modal and appears on `/esf-web/app`;
 - ESF page widget is hidden after login when the authenticated header with user info and `Выйти` is present;
 - temporary ESF network trace captures fetch/XHR plus signing function calls locally and can be cleared/downloaded from popup;
-- extension version bumped to display `0.1.37` (`manifest.version` is `0.1.37`, `manifest.version_name` is `0.1.37`).
+- popup `Очистить` activates debug bridge on the active ESF tab, reducing empty trace risk after extension reload;
+- extension version bumped to display `0.1.38` (`manifest.version` is `0.1.38`, `manifest.version_name` is `0.1.38`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.

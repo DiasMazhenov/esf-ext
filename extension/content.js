@@ -294,6 +294,17 @@ const runNcaLayerWebLogin = async () => {
 };
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.command === 'installNetworkDebug') {
+    ensureNetworkDebugBridge();
+    sendResponse({
+      ok: true,
+      status: 'OK',
+      title: 'Debug trace активен',
+      detail: 'Можно выполнять штатное действие на ESF.'
+    });
+    return true;
+  }
+
   if (message?.command === 'loginViaTouchIdWeb') {
     runTouchIdWebLogin()
       .then(sendResponse)
