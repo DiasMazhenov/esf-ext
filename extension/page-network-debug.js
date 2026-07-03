@@ -70,10 +70,129 @@
     }
   };
 
+  const logConsole = (label, value) => {
+    try {
+      console.info(`[ESF Bio Auth trace] ${label}`, value);
+    } catch {
+      // Console tracing must never affect ESF page code.
+    }
+  };
+
+  const summarizeSignPayload = (data) => {
+    if (Array.isArray(data)) {
+      return {
+        type: 'array',
+        count: data.length,
+        items: data.map((item, index) => ({
+          index,
+          id: item?.id ?? null,
+          hashLength: String(item?.hash ?? item ?? '').length,
+          keys: item && typeof item === 'object' ? Object.keys(item) : []
+        }))
+      };
+    }
+
+    return {
+      type: typeof data,
+      hashLength: data == null ? 0 : String(data).length
+    };
+  };
+
   const installFunctionHooks = () => {
+    if (window.signHashRequest && !window.signHashRequest.__esfBioDebugWrapped) {
+      const originalSignHashRequest = window.signHashRequest;
+      window.signHashRequest = function patchedSignHashRequest(data, callback, options, docType) {
+        const summary = {
+          docType: docType || null,
+          payload: summarizeSignPayload(data),
+          hasCallback: typeof callback === 'function',
+          optionKeys: options && typeof options === 'object' ? Object.keys(options) : []
+        };
+
+        logConsole('signHashRequest CALL', summary);
+        emit({
+          kind: 'function',
+          method: 'CALL',
+          url: 'signHashRequest',
+          requestBody: safeJson(summary),
+          status: 0,
+          responseText: safeJson(data)
+        });
+
+        const wrappedCallback = typeof callback === 'function'
+          ? function debugSignHashRequestCallback(certificate, signature, cert) {
+            const callbackSummary = {
+              docType: docType || null,
+              certificateLength: certificate ? String(certificate).length : 0,
+              signatureType: Array.isArray(signature) ? 'array' : typeof signature,
+              signatureKeys: signature && typeof signature === 'object' ? Object.keys(signature) : [],
+              signatureLength: typeof signature === 'string' ? signature.length : 0,
+              certKeys: cert && typeof cert === 'object' ? Object.keys(cert) : []
+            };
+            logConsole('signHashRequest CALLBACK', callbackSummary);
+            emit({
+              kind: 'function',
+              method: 'CALLBACK',
+              url: 'signHashRequest',
+              requestBody: null,
+              status: 0,
+              responseText: safeJson(callbackSummary)
+            });
+            return callback.apply(this, arguments);
+          }
+          : callback;
+
+        return originalSignHashRequest.call(this, data, wrappedCallback, options, docType);
+      };
+      window.signHashRequest.__esfBioDebugWrapped = true;
+      logConsole('hook installed', 'signHashRequest');
+    }
+
+    if (window.tumAdapter?.getSignature && !window.tumAdapter.getSignature.__esfBioDebugWrapped) {
+      const originalGetSignature = window.tumAdapter.getSignature;
+      window.tumAdapter.getSignature = function patchedGetSignature(data, callback) {
+        const summary = summarizeSignPayload(data);
+        logConsole('tumAdapter.getSignature CALL', summary);
+        emit({
+          kind: 'function',
+          method: 'CALL',
+          url: 'tumAdapter.getSignature',
+          requestBody: safeJson(summary),
+          status: 0,
+          responseText: safeJson(data)
+        });
+
+        const wrappedCallback = typeof callback === 'function'
+          ? function debugGetSignatureCallback(cert, sign) {
+            const callbackSummary = {
+              certKeys: cert && typeof cert === 'object' ? Object.keys(cert) : [],
+              signType: Array.isArray(sign) ? 'array' : typeof sign,
+              signKeys: sign && typeof sign === 'object' ? Object.keys(sign) : [],
+              signLength: typeof sign === 'string' ? sign.length : 0
+            };
+            logConsole('tumAdapter.getSignature CALLBACK', callbackSummary);
+            emit({
+              kind: 'function',
+              method: 'CALLBACK',
+              url: 'tumAdapter.getSignature',
+              requestBody: null,
+              status: 0,
+              responseText: safeJson(callbackSummary)
+            });
+            return callback.apply(this, arguments);
+          }
+          : callback;
+
+        return originalGetSignature.call(this, data, wrappedCallback);
+      };
+      window.tumAdapter.getSignature.__esfBioDebugWrapped = true;
+      logConsole('hook installed', 'tumAdapter.getSignature');
+    }
+
     if (window.tumAdapter?.signRequest && !window.tumAdapter.signRequest.__esfBioDebugWrapped) {
       const originalSignRequest = window.tumAdapter.signRequest;
       window.tumAdapter.signRequest = function patchedSignRequest(data, format, type, callback) {
+        logConsole('tumAdapter.signRequest CALL', { format, type, payload: summarizeSignPayload(data) });
         emit({
           kind: 'function',
           method: 'CALL',
@@ -85,6 +204,7 @@
 
         const wrappedCallback = typeof callback === 'function'
           ? function debugSignRequestCallback(result) {
+            logConsole('tumAdapter.signRequest CALLBACK', result);
             emit({
               kind: 'function',
               method: 'CALLBACK',
@@ -105,6 +225,7 @@
     if (window.selectSignMethod && !window.selectSignMethod.__esfBioDebugWrapped) {
       const originalSelectSignMethod = window.selectSignMethod;
       window.selectSignMethod = function patchedSelectSignMethod(login, callback) {
+        logConsole('selectSignMethod CALL', { login });
         emit({
           kind: 'function',
           method: 'CALL',
@@ -116,6 +237,7 @@
 
         const wrappedCallback = typeof callback === 'function'
           ? function debugSelectSignMethodCallback(method) {
+            logConsole('selectSignMethod CALLBACK', { method });
             emit({
               kind: 'function',
               method: 'CALLBACK',
@@ -136,6 +258,7 @@
     if (window.getQRSignSignature && !window.getQRSignSignature.__esfBioDebugWrapped) {
       const originalGetQRSignSignature = window.getQRSignSignature;
       window.getQRSignSignature = function patchedGetQRSignSignature(data, docType) {
+        logConsole('getQRSignSignature CALL', { docType, payload: summarizeSignPayload(data) });
         emit({
           kind: 'function',
           method: 'CALL',
@@ -146,6 +269,7 @@
         });
 
         return Promise.resolve(originalGetQRSignSignature.apply(this, arguments)).then((result) => {
+          logConsole('getQRSignSignature RESOLVE', result);
           emit({
             kind: 'function',
             method: 'RESOLVE',
@@ -276,6 +400,7 @@
     status: 0,
     responseText: 'ESF Bio Auth network debug installed'
   });
+  logConsole('installed', 'network/signing debug hooks are active');
 
   installFunctionHooks();
   window.setInterval(installFunctionHooks, 500);
