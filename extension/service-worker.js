@@ -1,4 +1,5 @@
 const SESSION_KEY = 'esfSession';
+const NETWORK_DEBUG_KEY = 'esfNetworkDebugTrace';
 const NATIVE_HOST = 'kz.esf.touchid';
 const NCA_LAYER_ENDPOINTS = [
   'wss://127.0.0.1:13579/',
@@ -40,6 +41,19 @@ const writeSession = async (session) => {
 
 const clearSession = async () => {
   await chrome.storage.session.remove(SESSION_KEY);
+};
+
+const readNetworkDebugTrace = async () => {
+  const result = await chrome.storage.local.get(NETWORK_DEBUG_KEY);
+  return Array.isArray(result[NETWORK_DEBUG_KEY]) ? result[NETWORK_DEBUG_KEY] : [];
+};
+
+const writeNetworkDebugTrace = async (trace) => {
+  await chrome.storage.local.set({ [NETWORK_DEBUG_KEY]: trace.slice(-300) });
+};
+
+const clearNetworkDebugTrace = async () => {
+  await chrome.storage.local.remove(NETWORK_DEBUG_KEY);
 };
 
 const sendNativeCommand = (command, payload = {}) => new Promise((resolve, reject) => {
@@ -181,6 +195,31 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 async function handleCommand(message) {
   switch (message?.command) {
+    case 'recordNetworkDebug': {
+      const trace = await readNetworkDebugTrace();
+      trace.push(message.entry);
+      await writeNetworkDebugTrace(trace);
+      return { ok: true, status: 'OK', title: 'Trace saved', detail: `${trace.length + 1}` };
+    }
+    case 'getNetworkDebug': {
+      const trace = await readNetworkDebugTrace();
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Network trace',
+        detail: `${trace.length} entries`,
+        trace
+      };
+    }
+    case 'clearNetworkDebug': {
+      await clearNetworkDebugTrace();
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Network trace очищен',
+        detail: 'Можно начинать чистую запись.'
+      };
+    }
     case 'saveConfig': {
       const nativeResponse = await sendNativeCommand('saveConfig', {
         iin: message.iin,

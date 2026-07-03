@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.36
+0.1.37
 ```
 
 Next verification step:
@@ -272,6 +272,8 @@ Content script auto-dismisses the ESF NCALayer warning modal by clicking its `OK
 Accent color changed to `#006196`; ESF page widget is now a bottom-right compact popup with only the extension logo as the biometric login button.
 The bottom-right logo widget is now always injected on ESF pages, including `/esf-web/app`; it no longer waits for the auth-method modal text.
 The bottom-right logo widget is hidden when the ESF authenticated header is detected by `UserInfoT2`/TIN plus the `Выйти` button.
+Temporary network debug capture is enabled on ESF pages: page-context script logs fetch/XHR method, URL, request body, status, response text, and calls to `selectSignMethod`, `tumAdapter.signRequest`, `getQRSignSignature` into `chrome.storage.local`; popup can clear/download the trace JSON.
+`signing.js` shows AWP QR signing flow uses `getQRSignSignature(data, docType)` and sends hashes to `mobileDocSign/sign/qr?wssId=...&documentTypeForSign=...`; ECP flow still needs trace of the callback/tumAdapter path.
 ```
 
 ### Java/JDK
@@ -390,7 +392,8 @@ Completed:
 - ESF page widget moved to bottom-right and now shows only logo button, which starts the same biometric web-login flow;
 - ESF page widget no longer depends on detecting the auth modal and appears on `/esf-web/app`;
 - ESF page widget is hidden after login when the authenticated header with user info and `Выйти` is present;
-- extension version bumped to display `0.1.36` (`manifest.version` is `0.1.36`, `manifest.version_name` is `0.1.36`).
+- temporary ESF network trace captures fetch/XHR plus signing function calls locally and can be cleared/downloaded from popup;
+- extension version bumped to display `0.1.37` (`manifest.version` is `0.1.37`, `manifest.version_name` is `0.1.37`).
 
 Pending:
 - Reload extension in Chrome and verify full ESF login flow returns `sessionId`.

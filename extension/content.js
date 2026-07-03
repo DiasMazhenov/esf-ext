@@ -1,8 +1,10 @@
 const TOUCH_ID_PANEL_ID = 'esf-touchid-login-panel';
 const STATUS_ID = 'esf-touchid-login-status';
 const PAGE_BRIDGE_ID = 'esf-touchid-ncalayer-page-bridge';
+const NETWORK_DEBUG_BRIDGE_ID = 'esf-bio-network-debug-bridge';
 const NCA_REQUEST_TYPE = 'ESF_TOUCHID_NCA_SIGN_REQUEST';
 const NCA_RESPONSE_TYPE = 'ESF_TOUCHID_NCA_SIGN_RESPONSE';
+const NETWORK_DEBUG_EVENT_TYPE = 'ESF_BIO_NETWORK_DEBUG_EVENT';
 
 const normalizeText = (value) => (value || '').replace(/\s+/g, ' ').trim();
 
@@ -78,6 +80,31 @@ const ensurePageBridge = () => {
   script.onload = () => script.remove();
   document.documentElement.append(script);
 };
+
+const ensureNetworkDebugBridge = () => {
+  if (document.querySelector(`#${NETWORK_DEBUG_BRIDGE_ID}`)) {
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.id = NETWORK_DEBUG_BRIDGE_ID;
+  script.src = chrome.runtime.getURL('page-network-debug.js');
+  script.onload = () => script.remove();
+  document.documentElement.append(script);
+};
+
+window.addEventListener('message', (event) => {
+  if (event.source !== window || event.data?.type !== NETWORK_DEBUG_EVENT_TYPE) {
+    return;
+  }
+
+  chrome.runtime.sendMessage({
+    command: 'recordNetworkDebug',
+    entry: event.data.entry
+  }).catch(() => {
+    // Debug capture must never break the ESF page.
+  });
+});
 
 // Debug-only fallback for comparing NCALayer signatures. Main login does not call this.
 const signXmlViaPageNcaLayer = (xml, mode = 'soap') => new Promise((resolve, reject) => {
@@ -338,5 +365,6 @@ const ensureTouchIdPanel = () => {
 const observer = new MutationObserver(ensureTouchIdPanel);
 observer.observe(document.documentElement, { childList: true, subtree: true, characterData: true });
 console.info('[ESF Bio Auth] Content script loaded');
+ensureNetworkDebugBridge();
 ensureTouchIdPanel();
 window.setInterval(ensureTouchIdPanel, 500);

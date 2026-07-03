@@ -13,6 +13,8 @@ const saveConfigButton = document.querySelector('#saveConfigButton');
 const loginButton = document.querySelector('#loginButton');
 const checkButton = document.querySelector('#checkButton');
 const logoutButton = document.querySelector('#logoutButton');
+const downloadTraceButton = document.querySelector('#downloadTraceButton');
+const clearTraceButton = document.querySelector('#clearTraceButton');
 
 versionLabel.textContent = `v${chrome.runtime.getManifest().version_name || chrome.runtime.getManifest().version}`;
 
@@ -52,6 +54,8 @@ const setBusy = (busy) => {
   loginButton.disabled = busy;
   checkButton.disabled = busy;
   logoutButton.disabled = busy;
+  downloadTraceButton.disabled = busy;
+  clearTraceButton.disabled = busy;
   if (busy) {
     statusBadge.textContent = 'Busy';
     statusBadge.className = 'badge badge-busy';
@@ -126,5 +130,31 @@ chooseCertificateButton.addEventListener('click', async () => {
 loginButton.addEventListener('click', () => sendCommand('login'));
 checkButton.addEventListener('click', () => sendCommand('status'));
 logoutButton.addEventListener('click', () => sendCommand('logout'));
+
+downloadTraceButton.addEventListener('click', async () => {
+  setBusy(true);
+  try {
+    const response = await chrome.runtime.sendMessage({ command: 'getNetworkDebug' });
+    if (!response?.ok) {
+      render(response);
+      return;
+    }
+
+    const blob = new Blob([JSON.stringify(response.trace || [], null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `esf-network-trace-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    render(response);
+  } catch (error) {
+    render({ ok: false, error: error.message });
+  } finally {
+    setBusy(false);
+  }
+});
+
+clearTraceButton.addEventListener('click', () => sendCommand('clearNetworkDebug'));
 
 sendCommand('status');
