@@ -263,6 +263,60 @@
     };
   };
 
+  const buildFormData = (fields) => {
+    const formData = new FormData();
+    Object.entries(fields || {}).forEach(([key, value]) => {
+      if (value != null) {
+        formData.append(key, value);
+      }
+    });
+    return formData;
+  };
+
+  const submitBiometricCandidate = async (candidate) => {
+    if (!candidate?.submitUrl || !candidate?.fields) {
+      throw new Error('Нет готового payload для отправки.');
+    }
+
+    if (!String(candidate.submitUrl).includes('/invoice/create')) {
+      return {
+        skipped: true,
+        reason: 'Автоотправка пока включена только для /invoice/create.',
+        submitUrl: candidate.submitUrl
+      };
+    }
+
+    const response = await fetch(candidate.submitUrl, {
+      method: 'POST',
+      body: buildFormData(candidate.fields),
+      credentials: 'include'
+    });
+    const responseText = await response.text();
+    let data = null;
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      data = null;
+    }
+
+    const result = {
+      ok: response.ok,
+      status: response.status,
+      submitUrl: candidate.submitUrl,
+      data,
+      responsePreview: truncate(responseText)
+    };
+
+    if (!response.ok || data?.success === false || data?.errors || data?.systemError) {
+      const message = data?.message || data?.systemError || data?.errors?.[0]?.text || `ESF submit failed: HTTP ${response.status}`;
+      const error = new Error(message);
+      error.result = result;
+      throw error;
+    }
+
+    return result;
+  };
+
   const describeElement = (element) => {
     if (!element || !(element instanceof HTMLElement)) {
       return null;
@@ -458,16 +512,37 @@
           status: 0,
           responseText: safeJson(result)
         });
+        if (window.__esfBioLastSubmitCandidate?.submitUrl?.includes('/invoice/create')) {
+          button.textContent = 'Отправляю...';
+          const submitResult = await submitBiometricCandidate(window.__esfBioLastSubmitCandidate);
+          window.__esfBioLastSubmitResult = {
+            capturedAt: new Date().toISOString(),
+            ...submitResult
+          };
+          logConsole('bio submit RESULT', submitResult);
+          emit({
+            kind: 'function',
+            method: 'RESULT',
+            url: 'bio-submit',
+            requestBody: safeJson(window.__esfBioLastSubmitCandidate.summary),
+            status: submitResult.status || 0,
+            responseText: safeJson(submitResult)
+          });
+          button.textContent = 'Отправлено через биометрию';
+          window.setTimeout(() => window.location.reload(), 1200);
+          return;
+        }
+
         button.textContent = 'Биометрия: подпись получена';
       } catch (error) {
-        logConsole('React bio sign ERROR', error.message);
+        logConsole('React bio sign ERROR', error.result || error.message);
         emit({
           kind: 'function',
           method: 'ERROR',
           url: 'react-bio-sign-button',
           requestBody: safeJson(window.__esfBioLastDocumentHash.hashSummary),
           status: 0,
-          responseText: error.message
+          responseText: safeJson(error.result || error.message)
         });
         button.textContent = 'Ошибка подписи';
       } finally {
