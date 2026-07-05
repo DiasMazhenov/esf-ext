@@ -273,6 +273,34 @@
     return formData;
   };
 
+  const postFormDataLikeAxios = (url, fields) => new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.withCredentials = true;
+    xhr.responseType = 'text';
+    xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
+    xhr.onload = () => {
+      const responseText = xhr.responseText || '';
+      let data = null;
+      try {
+        data = JSON.parse(responseText);
+      } catch {
+        data = null;
+      }
+      resolve({
+        ok: xhr.status >= 200 && xhr.status < 300,
+        status: xhr.status,
+        submitUrl: url,
+        data,
+        responsePreview: truncate(responseText)
+      });
+    };
+    xhr.onerror = () => reject(new Error('XHR network error while submitting biometric payload.'));
+    xhr.ontimeout = () => reject(new Error('XHR timeout while submitting biometric payload.'));
+    xhr.timeout = 60000;
+    xhr.send(buildFormData(fields));
+  });
+
   const submitBiometricCandidate = async (candidate) => {
     if (!candidate?.submitUrl || !candidate?.fields) {
       throw new Error('Нет готового payload для отправки.');
@@ -286,29 +314,11 @@
       };
     }
 
-    const response = await fetch(candidate.submitUrl, {
-      method: 'POST',
-      body: buildFormData(candidate.fields),
-      credentials: 'include'
-    });
-    const responseText = await response.text();
-    let data = null;
-    try {
-      data = JSON.parse(responseText);
-    } catch {
-      data = null;
-    }
+    const result = await postFormDataLikeAxios(candidate.submitUrl, candidate.fields);
+    const data = result.data;
 
-    const result = {
-      ok: response.ok,
-      status: response.status,
-      submitUrl: candidate.submitUrl,
-      data,
-      responsePreview: truncate(responseText)
-    };
-
-    if (!response.ok || data?.success === false || data?.errors || data?.systemError) {
-      const message = data?.message || data?.systemError || data?.errors?.[0]?.text || `ESF submit failed: HTTP ${response.status}`;
+    if (!result.ok || data?.success === false || data?.errors || data?.systemError) {
+      const message = data?.message || data?.systemError || data?.errors?.[0]?.text || `ESF submit failed: HTTP ${result.status}`;
       const error = new Error(message);
       error.result = result;
       throw error;

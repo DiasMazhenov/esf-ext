@@ -245,13 +245,13 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.45
+0.1.46
 ```
 
 Next verification step:
 
 ```text
-Reload extension -> open ESF invoice sign modal -> click "Подписать через биометрию" -> confirm biometrics -> extension signs raw XML and POSTs `/invoice/create`; verify console shows `bio submit RESULT`.
+Reload extension -> open ESF invoice sign modal -> click "Подписать через биометрию" -> confirm biometrics -> extension signs raw XML and POSTs `/invoice/create` using XHR like ESF axios; verify console shows `bio submit RESULT`.
 ```
 
 Latest fix:
@@ -398,9 +398,9 @@ Completed:
 - raw document signing via biometric native host is wired for the injected React sign-modal button;
 - successful raw signature is saved on the page as `window.__esfBioLastRawSignature`;
 - unsigned form fields from the `/invoice/hash` or `/awp/hash` request are combined with biometric `certificate` and `signature` into `window.__esfBioLastSubmitCandidate`;
-- `/invoice/create` is now auto-submitted after biometric signing; `/awp/*` remains candidate-only until AWP fields are confirmed;
+- `/invoice/create` is auto-submitted after biometric signing using XHR with credentials and `Accept: application/json, text/plain, */*`; `/awp/*` remains candidate-only until AWP fields are confirmed;
 - debug trace now highlights signed submit requests for `/invoice/create`, `/invoice/sendSignedDrafts`, `/invoice/sendSignedImported`, `/awp/create`, `/awp/sendSignedDrafts`, `/awp/sendSignedImported`;
-- extension version bumped to display `0.1.45` (`manifest.version` is `0.1.45`, `manifest.version_name` is `0.1.45`).
+- extension version bumped to display `0.1.46` (`manifest.version` is `0.1.46`, `manifest.version_name` is `0.1.46`).
 
 Pending:
 - Capture the exact official signed-submit payload once, or extract it from ESF bundle, then wire biometric signature into the same payload.
