@@ -245,13 +245,13 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.46
+0.1.47
 ```
 
 Next verification step:
 
 ```text
-Reload extension -> open ESF invoice sign modal -> click "Подписать через биометрию" -> confirm biometrics -> extension signs raw XML and POSTs `/invoice/create` using XHR like ESF axios; verify console shows `bio submit RESULT`.
+Reload extension -> open ESF invoice sign modal -> click "Подписать через биометрию" -> confirm biometrics -> ESF official ECP flow receives a NCALayer-compatible biometric signature and submits through its own code; verify console shows `fake NCALayer sign RESULT` and then `signed submit request captured`.
 ```
 
 Latest fix:
@@ -268,6 +268,7 @@ Primary `Войти через биометрию` flow no longer uses NCALayer:
 Popup active-tab validation now accepts `https://esf.gov.kz:8443/...` by checking URL hostname instead of string prefix, and stale NCALayer wording was removed from the error.
 Popup was redesigned with accent `#006196`, extension icons, logo near `ESF Bio Auth`, hidden config form when status is `Ready/OK`, and a `Ввести новые данные` edit button.
 Primary labels now say `биометрия` instead of `Touch ID`; NCALayer bridge is no longer auto-injected and remains debug-only fallback.
+Invoice signing no longer manually POSTs `/invoice/create`; the biometric button temporarily fakes the ESF NCALayer WebSocket, clicks the official `Подписать с помощью ЭЦП` button, and returns `{certificate, signatures}` to ESF's own `ncaLayer.getSignature` flow.
 Content script auto-dismisses the ESF NCALayer warning modal by clicking its `OK` button when the exact warning/link text is detected.
 Accent color changed to `#006196`; ESF page widget is now a bottom-right compact popup with only the extension logo as the biometric login button.
 The bottom-right logo widget is now always injected on ESF pages, including `/esf-web/app`; it no longer waits for the auth-method modal text.
@@ -398,9 +399,9 @@ Completed:
 - raw document signing via biometric native host is wired for the injected React sign-modal button;
 - successful raw signature is saved on the page as `window.__esfBioLastRawSignature`;
 - unsigned form fields from the `/invoice/hash` or `/awp/hash` request are combined with biometric `certificate` and `signature` into `window.__esfBioLastSubmitCandidate`;
-- `/invoice/create` is auto-submitted after biometric signing using XHR with credentials and `Accept: application/json, text/plain, */*`; `/awp/*` remains candidate-only until AWP fields are confirmed;
+- biometric document signing delegates submit to the official ESF flow by returning a NCALayer-compatible raw signature to ESF's own `getSignature` code;
 - debug trace now highlights signed submit requests for `/invoice/create`, `/invoice/sendSignedDrafts`, `/invoice/sendSignedImported`, `/awp/create`, `/awp/sendSignedDrafts`, `/awp/sendSignedImported`;
-- extension version bumped to display `0.1.46` (`manifest.version` is `0.1.46`, `manifest.version_name` is `0.1.46`).
+- extension version bumped to display `0.1.47` (`manifest.version` is `0.1.47`, `manifest.version_name` is `0.1.47`).
 
 Pending:
 - Capture the exact official signed-submit payload once, or extract it from ESF bundle, then wire biometric signature into the same payload.
@@ -410,9 +411,8 @@ Pending:
 1. In `chrome://extensions`, reload `ESF Bio Auth`.
 2. Open ESF invoice sign modal.
 3. Click `Подписать через биометрию`.
-4. Send the console object from `bio submit RESULT` or `React bio sign ERROR`.
 4. Complete biometric confirmation.
-5. Verify ESF returns `sessionId` or a clear SOAP error.
+5. Verify ESF submits through its own flow; if it fails, send `fake NCALayer sign RESULT` and `signed submit request captured`.
 
 ## Security Rules
 - Never store real PIN in Chrome extension storage.

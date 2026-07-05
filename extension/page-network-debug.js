@@ -263,70 +263,6 @@
     };
   };
 
-  const buildFormData = (fields) => {
-    const formData = new FormData();
-    Object.entries(fields || {}).forEach(([key, value]) => {
-      if (value != null) {
-        formData.append(key, value);
-      }
-    });
-    return formData;
-  };
-
-  const postFormDataLikeAxios = (url, fields) => new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', url, true);
-    xhr.withCredentials = true;
-    xhr.responseType = 'text';
-    xhr.setRequestHeader('Accept', 'application/json, text/plain, */*');
-    xhr.onload = () => {
-      const responseText = xhr.responseText || '';
-      let data = null;
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        data = null;
-      }
-      resolve({
-        ok: xhr.status >= 200 && xhr.status < 300,
-        status: xhr.status,
-        submitUrl: url,
-        data,
-        responsePreview: truncate(responseText)
-      });
-    };
-    xhr.onerror = () => reject(new Error('XHR network error while submitting biometric payload.'));
-    xhr.ontimeout = () => reject(new Error('XHR timeout while submitting biometric payload.'));
-    xhr.timeout = 60000;
-    xhr.send(buildFormData(fields));
-  });
-
-  const submitBiometricCandidate = async (candidate) => {
-    if (!candidate?.submitUrl || !candidate?.fields) {
-      throw new Error('Нет готового payload для отправки.');
-    }
-
-    if (!String(candidate.submitUrl).includes('/invoice/create')) {
-      return {
-        skipped: true,
-        reason: 'Автоотправка пока включена только для /invoice/create.',
-        submitUrl: candidate.submitUrl
-      };
-    }
-
-    const result = await postFormDataLikeAxios(candidate.submitUrl, candidate.fields);
-    const data = result.data;
-
-    if (!result.ok || data?.success === false || data?.errors || data?.systemError) {
-      const message = data?.message || data?.systemError || data?.errors?.[0]?.text || `ESF submit failed: HTTP ${result.status}`;
-      const error = new Error(message);
-      error.result = result;
-      throw error;
-    }
-
-    return result;
-  };
-
   const describeElement = (element) => {
     if (!element || !(element instanceof HTMLElement)) {
       return null;
@@ -404,6 +340,194 @@
     }, window.location.origin);
   });
 
+  const formatPemCertificate = (certificate) => {
+    const compact = String(certificate || '')
+      .replace(/-----BEGIN CERTIFICATE-----|-----END CERTIFICATE-----|\s+/g, '');
+    if (!compact) {
+      return '';
+    }
+    const lines = compact.match(/.{1,64}/g) || [compact];
+    return `-----BEGIN CERTIFICATE-----\n${lines.join('\n')}\n-----END CERTIFICATE-----`;
+  };
+
+  const installBioNcaLayerWebSocket = () => {
+    if (window.__esfBioNcaLayerWebSocketInstalled) {
+      return;
+    }
+
+    const NativeWebSocket = window.WebSocket;
+    if (typeof NativeWebSocket !== 'function') {
+      return;
+    }
+
+    const dispatchAsync = (target, type, detail = {}) => {
+      window.setTimeout(() => {
+        const event = {
+          type,
+          target,
+          currentTarget: target,
+          ...detail
+        };
+        const listeners = target.__listeners?.[type] || [];
+        listeners.forEach((listener) => {
+          try {
+            listener.call(target, event);
+          } catch (error) {
+            logConsole('fake NCALayer listener ERROR', error.message);
+          }
+        });
+        const handler = target[`on${type}`];
+        if (typeof handler === 'function') {
+          try {
+            handler.call(target, event);
+          } catch (error) {
+            logConsole('fake NCALayer handler ERROR', error.message);
+          }
+        }
+      }, 0);
+    };
+
+    class BioNcaLayerWebSocket {
+      constructor(url) {
+        this.url = String(url || '');
+        this.readyState = NativeWebSocket.OPEN;
+        this.bufferedAmount = 0;
+        this.extensions = '';
+        this.protocol = '';
+        this.binaryType = 'blob';
+        this.__listeners = {};
+        dispatchAsync(this, 'open');
+      }
+
+      addEventListener(type, listener) {
+        if (typeof listener !== 'function') {
+          return;
+        }
+        if (!this.__listeners[type]) {
+          this.__listeners[type] = [];
+        }
+        this.__listeners[type].push(listener);
+      }
+
+      removeEventListener(type, listener) {
+        this.__listeners[type] = (this.__listeners[type] || []).filter((item) => item !== listener);
+      }
+
+      dispatchEvent(event) {
+        dispatchAsync(this, event?.type || 'message', event || {});
+        return true;
+      }
+
+      send(payload) {
+        let request = null;
+        try {
+          request = JSON.parse(String(payload || '{}'));
+        } catch {
+          this.respond({ status: false, code: 'invalid-json' });
+          return;
+        }
+
+        logConsole('fake NCALayer request', {
+          module: request.module || null,
+          method: request.method || null,
+          format: request.args?.format || null,
+          dataType: Array.isArray(request.args?.data) ? 'array' : typeof request.args?.data
+        });
+
+        if (request.method === 'getBundles') {
+          this.respond({ result: { version: '1.4' } });
+          return;
+        }
+
+        if (request.method === 'sign') {
+          this.signRawPayload(request.args?.data);
+          return;
+        }
+
+        this.respond({ status: false, code: `unsupported-method:${request.method || 'unknown'}` });
+      }
+
+      async signRawPayload(data) {
+        const payloads = Array.isArray(data) ? data : [data];
+        try {
+          const signedItems = [];
+          for (const item of payloads) {
+            signedItems.push(await requestRawSign(String(item || '')));
+          }
+
+          const first = signedItems[0] || {};
+          const result = {
+            certificate: formatPemCertificate(first.certificate || ''),
+            signatures: signedItems.map((item) => item.signature || '')
+          };
+
+          window.__esfBioFakeNcaLastResult = {
+            capturedAt: new Date().toISOString(),
+            payloadCount: payloads.length,
+            certificateLength: first.certificate ? String(first.certificate).length : 0,
+            signatureLengths: result.signatures.map((signature) => String(signature || '').length),
+            diagnostics: first.diagnostics || null,
+            lastDocumentHash: window.__esfBioLastDocumentHash?.hashSummary || null
+          };
+
+          logConsole('fake NCALayer sign RESULT', window.__esfBioFakeNcaLastResult);
+          emit({
+            kind: 'function',
+            method: 'RESULT',
+            url: 'fake-ncalayer-sign',
+            requestBody: safeJson(window.__esfBioLastDocumentHash?.hashSummary || null),
+            status: 0,
+            responseText: safeJson(window.__esfBioFakeNcaLastResult)
+          });
+
+          this.respond({
+            status: true,
+            body: { result }
+          });
+        } catch (error) {
+          logConsole('fake NCALayer sign ERROR', error.message);
+          this.respond({
+            status: false,
+            code: error.message || 'bio-sign-failed'
+          });
+        }
+      }
+
+      respond(response) {
+        dispatchAsync(this, 'message', {
+          data: JSON.stringify(response)
+        });
+      }
+
+      close() {
+        this.readyState = NativeWebSocket.CLOSED;
+        dispatchAsync(this, 'close');
+      }
+    }
+
+    window.WebSocket = function EsfBioPatchedWebSocket(url, protocols) {
+      const targetUrl = String(url || '');
+      if (window.__esfBioFakeNcaActive && (targetUrl.includes('127.0.0.1:13579') || targetUrl.includes('localhost:13579'))) {
+        logConsole('fake NCALayer WebSocket opened', targetUrl);
+        return new BioNcaLayerWebSocket(targetUrl);
+      }
+
+      return protocols == null
+        ? new NativeWebSocket(url)
+        : new NativeWebSocket(url, protocols);
+    };
+
+    Object.defineProperties(window.WebSocket, {
+      CONNECTING: { value: NativeWebSocket.CONNECTING },
+      OPEN: { value: NativeWebSocket.OPEN },
+      CLOSING: { value: NativeWebSocket.CLOSING },
+      CLOSED: { value: NativeWebSocket.CLOSED }
+    });
+    window.WebSocket.prototype = NativeWebSocket.prototype;
+    window.__esfBioNcaLayerWebSocketInstalled = true;
+    logConsole('fake NCALayer WebSocket hook installed', 'short-lived bio signing mode');
+  };
+
   const isReactSignMethodModal = (element) => {
     if (!element || !(element instanceof HTMLElement)) {
       return false;
@@ -462,7 +586,7 @@
         title: 'Подписать через биометрию',
         location: window.location.href,
         lastDocumentHash: window.__esfBioLastDocumentHash?.hashSummary || null,
-        note: 'debug button clicked; native raw document signing requested'
+        note: 'delegating to official ESF ECP flow with biometric NCALayer-compatible signature'
       };
       logConsole('React bio sign button CLICK', trace);
       emit({
@@ -488,62 +612,55 @@
         return;
       }
 
-      button.disabled = true;
-      const previousText = button.textContent;
-      button.textContent = 'Подписываю...';
-      try {
-        const signed = await requestRawSign(window.__esfBioLastDocumentHash.hash);
-        window.__esfBioLastRawSignature = {
-          capturedAt: new Date().toISOString(),
-          certificate: signed.certificate || '',
-          signature: signed.signature || '',
-          diagnostics: signed.diagnostics || null,
-          documentHash: window.__esfBioLastDocumentHash.hash,
-          documentHashSummary: window.__esfBioLastDocumentHash.hashSummary
-        };
-        window.__esfBioLastSubmitCandidate = buildSubmitCandidate(signed);
-        const result = {
-          certificateLength: signed.certificate ? String(signed.certificate).length : 0,
-          signatureLength: signed.signature ? String(signed.signature).length : 0,
-          diagnostics: signed.diagnostics || null,
-          lastDocumentHash: window.__esfBioLastDocumentHash.hashSummary,
-          submitCandidate: window.__esfBioLastSubmitCandidate?.summary || null,
-          savedAs: 'window.__esfBioLastRawSignature and window.__esfBioLastSubmitCandidate'
-        };
-        logConsole('React bio sign RESULT', result);
-        if (window.__esfBioLastSubmitCandidate) {
-          logConsole('bio submit candidate prepared', window.__esfBioLastSubmitCandidate.summary);
-        }
+      if (!sourceButton) {
+        const error = 'Не найдена штатная кнопка "Подписать с помощью ЭЦП".';
+        logConsole('React bio sign ERROR', error);
         emit({
           kind: 'function',
-          method: 'RESULT',
+          method: 'ERROR',
+          url: 'react-bio-sign-button',
+          requestBody: null,
+          status: 0,
+          responseText: error
+        });
+        return;
+      }
+
+      button.disabled = true;
+      const previousText = button.textContent;
+      button.textContent = 'Передаю в ESF...';
+      try {
+        window.__esfBioFakeNcaActive = true;
+        window.clearTimeout(window.__esfBioFakeNcaActiveTimer);
+        window.__esfBioFakeNcaActiveTimer = window.setTimeout(() => {
+          window.__esfBioFakeNcaActive = false;
+        }, 120000);
+
+        const candidate = buildSubmitCandidate({
+          certificate: '',
+          signature: ''
+        });
+        window.__esfBioLastSubmitCandidate = candidate;
+
+        const result = {
+          mode: 'official-esf-flow',
+          fakeNcaActive: true,
+          nativeButton: describeElement(sourceButton),
+          lastDocumentHash: window.__esfBioLastDocumentHash.hashSummary,
+          submitCandidate: candidate?.summary || null
+        };
+        logConsole('React bio sign DELEGATED', result);
+        emit({
+          kind: 'function',
+          method: 'DELEGATED',
           url: 'react-bio-sign-button',
           requestBody: safeJson(window.__esfBioLastDocumentHash.hashSummary),
           status: 0,
           responseText: safeJson(result)
         });
-        if (window.__esfBioLastSubmitCandidate?.submitUrl?.includes('/invoice/create')) {
-          button.textContent = 'Отправляю...';
-          const submitResult = await submitBiometricCandidate(window.__esfBioLastSubmitCandidate);
-          window.__esfBioLastSubmitResult = {
-            capturedAt: new Date().toISOString(),
-            ...submitResult
-          };
-          logConsole('bio submit RESULT', submitResult);
-          emit({
-            kind: 'function',
-            method: 'RESULT',
-            url: 'bio-submit',
-            requestBody: safeJson(window.__esfBioLastSubmitCandidate.summary),
-            status: submitResult.status || 0,
-            responseText: safeJson(submitResult)
-          });
-          button.textContent = 'Отправлено через биометрию';
-          window.setTimeout(() => window.location.reload(), 1200);
-          return;
-        }
 
-        button.textContent = 'Биометрия: подпись получена';
+        sourceButton.click();
+        button.textContent = 'Ожидаю ESF...';
       } catch (error) {
         logConsole('React bio sign ERROR', error.result || error.message);
         emit({
@@ -559,7 +676,7 @@
         window.setTimeout(() => {
           button.disabled = false;
           button.textContent = previousText;
-        }, 2500);
+        }, 4000);
       }
     });
 
@@ -903,6 +1020,7 @@
   });
   logConsole('installed', 'network/signing debug hooks are active');
 
+  installBioNcaLayerWebSocket();
   installFunctionHooks();
   ensureReactSignMethodTrace();
   document.addEventListener('click', traceSignButtonClick, true);
