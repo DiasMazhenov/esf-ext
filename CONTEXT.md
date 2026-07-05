@@ -245,13 +245,13 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.43
+0.1.44
 ```
 
 Next verification step:
 
 ```text
-Reload extension -> open ESF invoice sign modal -> click "Подписать через биометрию" -> confirm biometrics -> verify console shows `React bio sign RESULT` and `savedAs: window.__esfBioLastRawSignature`.
+Reload extension -> open ESF invoice sign modal -> click "Подписать через биометрию" -> confirm biometrics -> verify console shows `React bio sign RESULT` with `submitCandidate` and `bio submit candidate prepared`.
 ```
 
 Latest fix:
@@ -397,8 +397,9 @@ Completed:
 - popup `Очистить` activates debug bridge on the active ESF tab, reducing empty trace risk after extension reload;
 - raw document signing via biometric native host is wired for the injected React sign-modal button;
 - successful raw signature is saved on the page as `window.__esfBioLastRawSignature`;
+- unsigned form fields from the `/invoice/hash` or `/awp/hash` request are combined with biometric `certificate` and `signature` into `window.__esfBioLastSubmitCandidate`; this is a dry-run candidate and is not auto-submitted;
 - debug trace now highlights signed submit requests for `/invoice/create`, `/invoice/sendSignedDrafts`, `/invoice/sendSignedImported`, `/awp/create`, `/awp/sendSignedDrafts`, `/awp/sendSignedImported`;
-- extension version bumped to display `0.1.43` (`manifest.version` is `0.1.43`, `manifest.version_name` is `0.1.43`).
+- extension version bumped to display `0.1.44` (`manifest.version` is `0.1.44`, `manifest.version_name` is `0.1.44`).
 
 Pending:
 - Capture the exact official signed-submit payload once, or extract it from ESF bundle, then wire biometric signature into the same payload.
@@ -408,7 +409,7 @@ Pending:
 1. In `chrome://extensions`, reload `ESF Bio Auth`.
 2. Open ESF invoice sign modal.
 3. Click `Подписать через биометрию`.
-4. Send the console object from `React bio sign RESULT`; if you later use official ECP/QR once, also send `signed submit request captured`.
+4. Send the console object from `bio submit candidate prepared`; if you later use official ECP/QR once, also send `signed submit request captured`.
 4. Complete biometric confirmation.
 5. Verify ESF returns `sessionId` or a clear SOAP error.
 

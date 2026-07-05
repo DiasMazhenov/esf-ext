@@ -220,6 +220,49 @@
     });
   };
 
+  const deriveSubmitUrlFromHashUrl = (hashUrl) => {
+    const url = String(hashUrl || '');
+    if (url.includes('/invoice/hash')) {
+      return url.replace('/invoice/hash', '/invoice/create');
+    }
+    if (url.includes('/awp/hash')) {
+      return url.replace('/awp/hash', '/awp/create');
+    }
+    return null;
+  };
+
+  const buildSubmitCandidate = (signed) => {
+    const lastHash = window.__esfBioLastDocumentHash;
+    const formData = parseCapturedFormData(lastHash?.requestBody);
+    const submitUrl = deriveSubmitUrlFromHashUrl(lastHash?.url);
+
+    if (!formData || !submitUrl) {
+      return null;
+    }
+
+    const fields = {
+      ...formData,
+      certificate: signed.certificate || '',
+      signature: signed.signature || ''
+    };
+
+    return {
+      capturedAt: new Date().toISOString(),
+      submitUrl,
+      fields,
+      summary: {
+        submitUrl,
+        formKeys: Object.keys(fields),
+        sourceHashUrl: lastHash.url,
+        sourceHashFormKeys: Object.keys(formData),
+        certificateLength: fields.certificate.length,
+        signatureLength: fields.signature.length,
+        invoiceLength: fields.invoice ? String(fields.invoice).length : 0,
+        version: fields.version || null
+      }
+    };
+  };
+
   const describeElement = (element) => {
     if (!element || !(element instanceof HTMLElement)) {
       return null;
@@ -394,14 +437,19 @@
           documentHash: window.__esfBioLastDocumentHash.hash,
           documentHashSummary: window.__esfBioLastDocumentHash.hashSummary
         };
+        window.__esfBioLastSubmitCandidate = buildSubmitCandidate(signed);
         const result = {
           certificateLength: signed.certificate ? String(signed.certificate).length : 0,
           signatureLength: signed.signature ? String(signed.signature).length : 0,
           diagnostics: signed.diagnostics || null,
           lastDocumentHash: window.__esfBioLastDocumentHash.hashSummary,
-          savedAs: 'window.__esfBioLastRawSignature'
+          submitCandidate: window.__esfBioLastSubmitCandidate?.summary || null,
+          savedAs: 'window.__esfBioLastRawSignature and window.__esfBioLastSubmitCandidate'
         };
         logConsole('React bio sign RESULT', result);
+        if (window.__esfBioLastSubmitCandidate) {
+          logConsole('bio submit candidate prepared', window.__esfBioLastSubmitCandidate.summary);
+        }
         emit({
           kind: 'function',
           method: 'RESULT',
