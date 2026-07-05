@@ -1,5 +1,7 @@
 (function () {
   const EVENT_TYPE = 'ESF_BIO_NETWORK_DEBUG_EVENT';
+  const RAW_SIGN_REQUEST_TYPE = 'ESF_BIO_RAW_SIGN_REQUEST';
+  const RAW_SIGN_RESPONSE_TYPE = 'ESF_BIO_RAW_SIGN_RESPONSE';
   const MAX_TEXT_LENGTH = 200000;
 
   if (window.__esfBioNetworkDebugInstalled) {
@@ -195,6 +197,37 @@
     });
   };
 
+  const requestRawSign = (rawData) => new Promise((resolve, reject) => {
+    const requestId = `raw-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const timer = window.setTimeout(() => {
+      window.removeEventListener('message', handleResponse);
+      reject(new Error('Native raw-sign не ответил за 60 секунд.'));
+    }, 60000);
+
+    function handleResponse(event) {
+      if (event.source !== window || event.data?.type !== RAW_SIGN_RESPONSE_TYPE || event.data.requestId !== requestId) {
+        return;
+      }
+
+      window.clearTimeout(timer);
+      window.removeEventListener('message', handleResponse);
+
+      if (!event.data.ok) {
+        reject(new Error(event.data.error || 'Raw подпись не получена.'));
+        return;
+      }
+
+      resolve(event.data);
+    }
+
+    window.addEventListener('message', handleResponse);
+    window.postMessage({
+      type: RAW_SIGN_REQUEST_TYPE,
+      requestId,
+      rawData
+    }, window.location.origin);
+  });
+
   const isReactSignMethodModal = (element) => {
     if (!element || !(element instanceof HTMLElement)) {
       return false;
@@ -248,12 +281,12 @@
     button.style.borderColor = '#006196';
     button.style.color = '#fff';
 
-    button.addEventListener('click', () => {
+    button.addEventListener('click', async () => {
       const trace = {
         title: 'Подписать через биометрию',
         location: window.location.href,
         lastDocumentHash: window.__esfBioLastDocumentHash?.hashSummary || null,
-        note: 'debug button clicked; native raw document signing is not wired yet'
+        note: 'debug button clicked; native raw document signing requested'
       };
       logConsole('React bio sign button CLICK', trace);
       emit({
@@ -264,6 +297,59 @@
         status: 0,
         responseText: safeJson(trace)
       });
+
+      if (!window.__esfBioLastDocumentHash?.hash) {
+        const error = 'Нет последнего XML из /invoice/hash или /awp/hash.';
+        logConsole('React bio sign ERROR', error);
+        emit({
+          kind: 'function',
+          method: 'ERROR',
+          url: 'react-bio-sign-button',
+          requestBody: null,
+          status: 0,
+          responseText: error
+        });
+        return;
+      }
+
+      button.disabled = true;
+      const previousText = button.textContent;
+      button.textContent = 'Подписываю...';
+      try {
+        const signed = await requestRawSign(window.__esfBioLastDocumentHash.hash);
+        const result = {
+          certificateLength: signed.certificate ? String(signed.certificate).length : 0,
+          signatureLength: signed.signature ? String(signed.signature).length : 0,
+          diagnostics: signed.diagnostics || null,
+          lastDocumentHash: window.__esfBioLastDocumentHash.hashSummary
+        };
+        logConsole('React bio sign RESULT', result);
+        emit({
+          kind: 'function',
+          method: 'RESULT',
+          url: 'react-bio-sign-button',
+          requestBody: safeJson(window.__esfBioLastDocumentHash.hashSummary),
+          status: 0,
+          responseText: safeJson(result)
+        });
+        button.textContent = 'Биометрия: подпись получена';
+      } catch (error) {
+        logConsole('React bio sign ERROR', error.message);
+        emit({
+          kind: 'function',
+          method: 'ERROR',
+          url: 'react-bio-sign-button',
+          requestBody: safeJson(window.__esfBioLastDocumentHash.hashSummary),
+          status: 0,
+          responseText: error.message
+        });
+        button.textContent = 'Ошибка подписи';
+      } finally {
+        window.setTimeout(() => {
+          button.disabled = false;
+          button.textContent = previousText;
+        }, 2500);
+      }
     });
 
     container.append(button);

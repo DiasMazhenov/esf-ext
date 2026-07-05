@@ -5,6 +5,8 @@ const NETWORK_DEBUG_BRIDGE_ID = 'esf-bio-network-debug-bridge';
 const NCA_REQUEST_TYPE = 'ESF_TOUCHID_NCA_SIGN_REQUEST';
 const NCA_RESPONSE_TYPE = 'ESF_TOUCHID_NCA_SIGN_RESPONSE';
 const NETWORK_DEBUG_EVENT_TYPE = 'ESF_BIO_NETWORK_DEBUG_EVENT';
+const RAW_SIGN_REQUEST_TYPE = 'ESF_BIO_RAW_SIGN_REQUEST';
+const RAW_SIGN_RESPONSE_TYPE = 'ESF_BIO_RAW_SIGN_RESPONSE';
 
 const normalizeText = (value) => (value || '').replace(/\s+/g, ' ').trim();
 
@@ -94,16 +96,39 @@ const ensureNetworkDebugBridge = () => {
 };
 
 window.addEventListener('message', (event) => {
-  if (event.source !== window || event.data?.type !== NETWORK_DEBUG_EVENT_TYPE) {
+  if (event.source !== window) {
     return;
   }
 
-  chrome.runtime.sendMessage({
-    command: 'recordNetworkDebug',
-    entry: event.data.entry
-  }).catch(() => {
-    // Debug capture must never break the ESF page.
-  });
+  if (event.data?.type === NETWORK_DEBUG_EVENT_TYPE) {
+    chrome.runtime.sendMessage({
+      command: 'recordNetworkDebug',
+      entry: event.data.entry
+    }).catch(() => {
+      // Debug capture must never break the ESF page.
+    });
+    return;
+  }
+
+  if (event.data?.type === RAW_SIGN_REQUEST_TYPE) {
+    chrome.runtime.sendMessage({
+      command: 'signRaw',
+      rawData: event.data.rawData
+    }).then((response) => {
+      window.postMessage({
+        type: RAW_SIGN_RESPONSE_TYPE,
+        requestId: event.data.requestId,
+        ...response
+      }, window.location.origin);
+    }).catch((error) => {
+      window.postMessage({
+        type: RAW_SIGN_RESPONSE_TYPE,
+        requestId: event.data.requestId,
+        ok: false,
+        error: error.message
+      }, window.location.origin);
+    });
+  }
 });
 
 // Debug-only fallback for comparing NCALayer signatures. Main login does not call this.

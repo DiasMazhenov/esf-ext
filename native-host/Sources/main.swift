@@ -10,6 +10,7 @@ struct NativeRequest: Decodable {
     let pin: String?
     let soapPassword: String?
     let xml: String?
+    let rawData: String?
     let signedAuthTicket: String?
 }
 
@@ -27,6 +28,8 @@ struct NativeResponse: Encodable {
     let sessionId: String?
     let diagnostics: String?
     let webPassword: String?
+    let certificate: String?
+    let rawSignature: String?
 
     init(
         ok: Bool,
@@ -41,7 +44,9 @@ struct NativeResponse: Encodable {
         authTicketXml: String? = nil,
         sessionId: String? = nil,
         diagnostics: String? = nil,
-        webPassword: String? = nil
+        webPassword: String? = nil,
+        certificate: String? = nil,
+        rawSignature: String? = nil
     ) {
         self.ok = ok
         self.command = command
@@ -56,11 +61,19 @@ struct NativeResponse: Encodable {
         self.sessionId = sessionId
         self.diagnostics = diagnostics
         self.webPassword = webPassword
+        self.certificate = certificate
+        self.rawSignature = rawSignature
     }
 }
 
 struct SignXmlResult {
     let signedXml: String
+    let diagnostics: String
+}
+
+struct SignRawResult {
+    let certificate: String
+    let signature: String
     let diagnostics: String
 }
 
@@ -82,6 +95,7 @@ let keychainService = "kz.esf.touchid"
 let pinAccount = "certificate-pin"
 let soapPasswordAccount = "soap-password"
 let signXmlPath = "/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/bin/sign-xml"
+let signRawPath = "/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/bin/sign-raw"
 let esfWebUrl = "https://esf.gov.kz:8443/esf-web"
 
 func appSupportDir(create: Bool) throws -> URL {
@@ -666,6 +680,51 @@ func runSignXml(xml: String, certificatePath: String, pin: String) throws -> Sig
     return SignXmlResult(signedXml: signedXml, diagnostics: diagnostics)
 }
 
+func runSignRaw(data: String, certificatePath: String, pin: String) throws -> SignRawResult {
+    guard FileManager.default.isExecutableFile(atPath: signRawPath) else {
+        throw NativeHostError.invalidConfig("sign-raw bridge is not built")
+    }
+
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: signRawPath)
+    process.arguments = [certificatePath]
+    process.environment = ProcessInfo.processInfo.environment.merging(["ESF_CERT_PIN": pin]) { _, new in new }
+
+    let input = Pipe()
+    let output = Pipe()
+    let errorOutput = Pipe()
+    process.standardInput = input
+    process.standardOutput = output
+    process.standardError = errorOutput
+
+    try process.run()
+    input.fileHandleForWriting.write(Data(data.utf8))
+    input.fileHandleForWriting.closeFile()
+    process.waitUntilExit()
+
+    let outputData = output.fileHandleForReading.readDataToEndOfFile()
+    let errorData = errorOutput.fileHandleForReading.readDataToEndOfFile()
+    let diagnostics = compactDiagnostics(String(data: errorData, encoding: .utf8)?
+        .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    )
+
+    guard process.terminationStatus == 0, !outputData.isEmpty else {
+        throw NativeHostError.invalidConfig(diagnostics.isEmpty ? "sign-raw failed" : diagnostics)
+    }
+
+    guard
+        let parsed = try JSONSerialization.jsonObject(with: outputData) as? [String: Any],
+        let certificate = parsed["certificate"] as? String,
+        let signature = parsed["signature"] as? String,
+        !certificate.isEmpty,
+        !signature.isEmpty
+    else {
+        throw NativeHostError.invalidConfig("sign-raw returned invalid JSON")
+    }
+
+    return SignRawResult(certificate: certificate, signature: signature, diagnostics: diagnostics)
+}
+
 func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
     let command = "signXml"
     let xml = try normalizedRequired(request.xml, name: "xml")
@@ -695,6 +754,39 @@ func signXmlAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
         certificatePath: config.certificatePath,
         signedXml: signResult.signedXml,
         diagnostics: signResult.diagnostics
+    )
+}
+
+func signRawAfterTouchId(_ request: NativeRequest) throws -> NativeResponse {
+    let command = "signRaw"
+    let rawData = try normalizedRequired(request.rawData ?? request.xml, name: "rawData")
+
+    guard let config = try loadConfig(), hasPin() else {
+        return NativeResponse(ok: false, command: command, message: "setup-required", timestamp: nowIso8601(), configured: false)
+    }
+
+    let touchResponse = evaluateTouchId()
+    guard touchResponse.ok else {
+        return touchResponse
+    }
+
+    guard let pin = try readPin(), !pin.isEmpty else {
+        return NativeResponse(ok: false, command: command, message: "pin-not-found", timestamp: nowIso8601(), configured: false)
+    }
+
+    let signResult = try runSignRaw(data: rawData, certificatePath: config.certificatePath, pin: pin)
+    return NativeResponse(
+        ok: true,
+        command: command,
+        message: "raw-signed",
+        timestamp: nowIso8601(),
+        configured: true,
+        iin: config.iin,
+        tin: config.tin,
+        certificatePath: config.certificatePath,
+        diagnostics: signResult.diagnostics,
+        certificate: signResult.certificate,
+        rawSignature: signResult.signature
     )
 }
 
@@ -867,6 +959,8 @@ func handle(_ data: Data) throws -> NativeResponse {
         return try createSessionFromSignedTicket(request)
     case "signXml":
         return try signXmlAfterTouchId(request)
+    case "signRaw":
+        return try signRawAfterTouchId(request)
     case "signWebTicket":
         return try signWebTicketAfterTouchId(request)
     case "chooseCertificate":

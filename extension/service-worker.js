@@ -289,6 +289,25 @@ async function handleCommand(message) {
         signedXml: nativeResponse.signedXml
       };
     }
+    case 'signRaw': {
+      const nativeResponse = await sendNativeCommand('signRaw', { rawData: message.rawData });
+      if (!nativeResponse?.ok) {
+        if (nativeResponse?.message === 'setup-required') {
+          return { ok: false, error: 'Сначала заполните настройку ЭЦП и сохраните PIN в Keychain.' };
+        }
+        return { ok: false, error: nativeResponse?.message || 'Документ не подписан.' };
+      }
+
+      return {
+        ok: true,
+        status: 'OK',
+        title: 'Документ подписан',
+        detail: 'Raw подпись получена через биометрию.',
+        certificate: nativeResponse.certificate,
+        signature: nativeResponse.rawSignature,
+        diagnostics: nativeResponse.diagnostics
+      };
+    }
     case 'signWebTicket': {
       const nativeResponse = await sendNativeCommand('signWebTicket', { xml: message.xml });
       if (!nativeResponse?.ok) {
