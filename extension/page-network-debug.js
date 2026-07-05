@@ -98,6 +98,79 @@
     };
   };
 
+  const isReactSignMethodModal = (element) => {
+    if (!element || !(element instanceof HTMLElement)) {
+      return false;
+    }
+
+    const text = element.innerText || '';
+    return text.includes('Способ подписания') &&
+      text.includes('Подписать с помощью ЭЦП') &&
+      text.includes('Подписать с помощью QR');
+  };
+
+  const ensureReactSignMethodTrace = () => {
+    const modals = [...document.querySelectorAll('[role="dialog"], .ReactModal__Content, [class*="SelectMethodModal_wrapper"]')];
+    const modal = modals.find(isReactSignMethodModal);
+    if (!modal) {
+      return;
+    }
+
+    if (modal.dataset.esfBioSignModalTraced !== 'true') {
+      modal.dataset.esfBioSignModalTraced = 'true';
+      const buttons = [...modal.querySelectorAll('button')].map((button) => button.innerText.trim());
+      const trace = {
+        title: 'Способ подписания',
+        buttons,
+        location: window.location.href
+      };
+      logConsole('React sign modal detected', trace);
+      emit({
+        kind: 'function',
+        method: 'DETECTED',
+        url: 'react-sign-method-modal',
+        requestBody: null,
+        status: 0,
+        responseText: safeJson(trace)
+      });
+    }
+
+    const container = modal.querySelector('[class*="SelectMethodModal_container"]') || modal;
+    if (container.querySelector('.esf-bio-sign-debug-button')) {
+      return;
+    }
+
+    const sourceButton = [...container.querySelectorAll('button')]
+      .find((button) => button.innerText.includes('Подписать с помощью ЭЦП'));
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = `${sourceButton?.className || ''} esf-bio-sign-debug-button`.trim();
+    button.textContent = 'Подписать через биометрию';
+    button.style.background = '#006196';
+    button.style.borderColor = '#006196';
+    button.style.color = '#fff';
+
+    button.addEventListener('click', () => {
+      const trace = {
+        title: 'Подписать через биометрию',
+        location: window.location.href,
+        note: 'debug button clicked; native raw document signing is not wired yet'
+      };
+      logConsole('React bio sign button CLICK', trace);
+      emit({
+        kind: 'function',
+        method: 'CLICK',
+        url: 'react-bio-sign-button',
+        requestBody: null,
+        status: 0,
+        responseText: safeJson(trace)
+      });
+    });
+
+    container.append(button);
+    logConsole('React bio sign debug button injected', { location: window.location.href });
+  };
+
   const installFunctionHooks = () => {
     if (window.signHashRequest && !window.signHashRequest.__esfBioDebugWrapped) {
       const originalSignHashRequest = window.signHashRequest;
@@ -403,5 +476,7 @@
   logConsole('installed', 'network/signing debug hooks are active');
 
   installFunctionHooks();
+  ensureReactSignMethodTrace();
   window.setInterval(installFunctionHooks, 500);
+  window.setInterval(ensureReactSignMethodTrace, 500);
 })();
