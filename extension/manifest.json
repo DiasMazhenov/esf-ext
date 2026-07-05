@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "ESF Bio Auth",
-  "version": "0.1.40",
-  "version_name": "0.1.40",
+  "version": "0.1.41",
+  "version_name": "0.1.41",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAn5UFNJx+lAVguQh81ZOcY+QdUpnYoNCCIgvO/xv8kReesZ1pm2WnqIU/BMDNVnbguWYsZPItpsdBZwk+ExE5QbAeHZBVqu1vWE7BNrV32eb0tS2Ql8aPzQANgM4OOm+FLmL38AidC+5u7OsKFvyZS6rrxc9cbtL3Px1GcPPJAYoikhsCmlHk3AiGXPDPPHjfspSn21ELVIrmkEcr6pz/bhwVaPFvloeT2iv2KGug9nraZlHpzGd1gdikd2CzYBXs1+d0cBwTfWIARlrfxMdJLgOUQdutGMB7YIo1FY+uVfQuBx9XrvHAFxm777n4dWVM6yryTRPJ32LK7OfZp5u2dQIDAQAB",
   "description": "Local biometric gate for certificate-based ESF sessions.",
   "permissions": ["nativeMessaging", "storage", "activeTab", "tabs"],

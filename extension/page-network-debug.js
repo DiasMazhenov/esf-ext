@@ -98,6 +98,103 @@
     };
   };
 
+  const summarizeXml = (value) => {
+    const text = value == null ? '' : String(value);
+    const rootMatch = text.match(/<([a-zA-Z0-9_-]+:)?([a-zA-Z0-9_-]+)/);
+    const numberMatch = text.match(/<num>([^<]+)<\/num>/);
+    const dateMatch = text.match(/<date>([^<]+)<\/date>/);
+    const invoiceTypeMatch = text.match(/<invoiceType>([^<]+)<\/invoiceType>/);
+    return {
+      root: rootMatch ? rootMatch[2] : null,
+      length: text.length,
+      num: numberMatch ? numberMatch[1] : null,
+      date: dateMatch ? dateMatch[1] : null,
+      invoiceType: invoiceTypeMatch ? invoiceTypeMatch[1] : null,
+      preview: truncate(text.slice(0, 500))
+    };
+  };
+
+  const rememberPossibleHashResponse = (entry) => {
+    if (!String(entry.url || '').includes('/invoice/hash') && !String(entry.url || '').includes('/awp/hash')) {
+      return;
+    }
+
+    let parsed = null;
+    try {
+      parsed = JSON.parse(entry.responseText);
+    } catch {
+      return;
+    }
+
+    if (!parsed?.hash) {
+      return;
+    }
+
+    window.__esfBioLastDocumentHash = {
+      capturedAt: new Date().toISOString(),
+      url: entry.url,
+      requestBody: entry.requestBody,
+      hash: parsed.hash,
+      hashSummary: summarizeXml(parsed.hash)
+    };
+
+    logConsole('document hash captured', window.__esfBioLastDocumentHash.hashSummary);
+    emit({
+      kind: 'function',
+      method: 'CAPTURED',
+      url: 'document-hash',
+      requestBody: truncate(entry.requestBody),
+      status: entry.status || 0,
+      responseText: safeJson(window.__esfBioLastDocumentHash.hashSummary)
+    });
+  };
+
+  const describeElement = (element) => {
+    if (!element || !(element instanceof HTMLElement)) {
+      return null;
+    }
+
+    return {
+      tag: element.tagName.toLowerCase(),
+      text: truncate((element.innerText || element.textContent || '').trim()),
+      className: String(element.className || ''),
+      id: element.id || null,
+      type: element.getAttribute('type')
+    };
+  };
+
+  const traceSignButtonClick = (event) => {
+    const button = event.target?.closest?.('button, a');
+    if (!button) {
+      return;
+    }
+
+    const text = (button.innerText || button.textContent || '').replace(/\s+/g, ' ').trim();
+    const isSignButton = text.includes('Подписать с помощью ЭЦП') ||
+      text.includes('Подписать с помощью QR') ||
+      text.includes('Подписать через биометрию');
+    if (!isSignButton) {
+      return;
+    }
+
+    const trace = {
+      button: describeElement(button),
+      modal: describeElement(button.closest('[role="dialog"], .ReactModal__Content, .ui-dialog')),
+      lastDocumentHash: window.__esfBioLastDocumentHash?.hashSummary || null,
+      location: window.location.href
+    };
+
+    logConsole('sign method button CLICK', trace);
+    emit({
+      kind: 'function',
+      method: 'CLICK',
+      url: 'sign-method-button',
+      requestBody: null,
+      status: 0,
+      responseText: safeJson(trace)
+    });
+  };
+
   const isReactSignMethodModal = (element) => {
     if (!element || !(element instanceof HTMLElement)) {
       return false;
@@ -122,6 +219,7 @@
       const trace = {
         title: 'Способ подписания',
         buttons,
+        lastDocumentHash: window.__esfBioLastDocumentHash?.hashSummary || null,
         location: window.location.href
       };
       logConsole('React sign modal detected', trace);
@@ -154,6 +252,7 @@
       const trace = {
         title: 'Подписать через биометрию',
         location: window.location.href,
+        lastDocumentHash: window.__esfBioLastDocumentHash?.hashSummary || null,
         note: 'debug button clicked; native raw document signing is not wired yet'
       };
       logConsole('React bio sign button CLICK', trace);
@@ -403,6 +502,12 @@
         responseText: truncate(responseText),
         durationMs: Date.now() - startedAt
       });
+      rememberPossibleHashResponse({
+        url,
+        requestBody,
+        responseText,
+        status: response.status
+      });
       return response;
     } catch (error) {
       emit({
@@ -461,6 +566,12 @@
         responseText: truncate(responseText),
         durationMs: debug.startedAt ? Date.now() - debug.startedAt : null
       });
+      rememberPossibleHashResponse({
+        url: debug.url || '',
+        requestBody: debug.requestBody,
+        responseText,
+        status: this.status
+      });
     });
 
     return originalSend.apply(this, arguments);
@@ -477,6 +588,7 @@
 
   installFunctionHooks();
   ensureReactSignMethodTrace();
+  document.addEventListener('click', traceSignButtonClick, true);
   window.setInterval(installFunctionHooks, 500);
   window.setInterval(ensureReactSignMethodTrace, 500);
 })();
