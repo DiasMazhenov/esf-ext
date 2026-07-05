@@ -245,13 +245,13 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.38
+0.1.43
 ```
 
 Next verification step:
 
 ```text
-Open ESF login modal -> click floating "Войти через биометрию" panel -> biometric confirmation -> SDK signs web ticket -> ESF web login completes.
+Reload extension -> open ESF invoice sign modal -> click "Подписать через биометрию" -> confirm biometrics -> verify console shows `React bio sign RESULT` and `savedAs: window.__esfBioLastRawSignature`.
 ```
 
 Latest fix:
@@ -395,19 +395,20 @@ Completed:
 - ESF page widget is hidden after login when the authenticated header with user info and `Выйти` is present;
 - temporary ESF network trace captures fetch/XHR plus signing function calls locally and can be cleared/downloaded from popup;
 - popup `Очистить` activates debug bridge on the active ESF tab, reducing empty trace risk after extension reload;
-- extension version bumped to display `0.1.38` (`manifest.version` is `0.1.38`, `manifest.version_name` is `0.1.38`).
+- raw document signing via biometric native host is wired for the injected React sign-modal button;
+- successful raw signature is saved on the page as `window.__esfBioLastRawSignature`;
+- debug trace now highlights signed submit requests for `/invoice/create`, `/invoice/sendSignedDrafts`, `/invoice/sendSignedImported`, `/awp/create`, `/awp/sendSignedDrafts`, `/awp/sendSignedImported`;
+- extension version bumped to display `0.1.43` (`manifest.version` is `0.1.43`, `manifest.version_name` is `0.1.43`).
 
 Pending:
-- Reload extension in Chrome and verify full ESF login flow returns `sessionId`.
-- Start NCALayer and test `Войти через NCA Layer`.
-- If Java bridge returns `unsupported-signature-method`, choose a GOST512 NCA `.p12` certificate instead of RSA.
-- Implement SOAP calls for `currentSessionStatus`, `closeSession`.
-- Test against ESF test stand.
+- Capture the exact official signed-submit payload once, or extract it from ESF bundle, then wire biometric signature into the same payload.
+- Keep auto-submit disabled until payload fields are verified.
 
 ## Next Step
-1. In `chrome://extensions`, click reload on `ESF Bio Auth`.
-2. Open ESF login modal.
-3. Click the floating `Войти через биометрию` panel.
+1. In `chrome://extensions`, reload `ESF Bio Auth`.
+2. Open ESF invoice sign modal.
+3. Click `Подписать через биометрию`.
+4. Send the console object from `React bio sign RESULT`; if you later use official ECP/QR once, also send `signed submit request captured`.
 4. Complete biometric confirmation.
 5. Verify ESF returns `sessionId` or a clear SOAP error.
 

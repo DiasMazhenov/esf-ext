@@ -151,6 +151,75 @@
     });
   };
 
+  const parseCapturedFormData = (requestBody) => {
+    if (!requestBody) {
+      return null;
+    }
+
+    try {
+      const entries = JSON.parse(requestBody);
+      if (!Array.isArray(entries)) {
+        return null;
+      }
+
+      return entries.reduce((acc, entry) => {
+        if (Array.isArray(entry) && entry.length >= 2) {
+          acc[entry[0]] = entry[1];
+        }
+        return acc;
+      }, {});
+    } catch {
+      return null;
+    }
+  };
+
+  const summarizeSubmitRequest = (entry) => {
+    const url = String(entry.url || '');
+    const isTrackedSubmit = [
+      '/invoice/create',
+      '/invoice/sendSignedDrafts',
+      '/invoice/sendSignedImported',
+      '/awp/create',
+      '/awp/sendSignedDrafts',
+      '/awp/sendSignedImported'
+    ].some((path) => url.includes(path));
+
+    if (!isTrackedSubmit) {
+      return;
+    }
+
+    const formData = parseCapturedFormData(entry.requestBody);
+    const summary = {
+      url,
+      status: entry.status || 0,
+      formKeys: formData ? Object.keys(formData) : [],
+      hasCertificate: Boolean(formData?.certificate || String(entry.requestBody || '').includes('certificate')),
+      hasSignature: Boolean(formData?.signature || formData?.signatures || String(entry.requestBody || '').includes('signature')),
+      certificateLength: formData?.certificate ? String(formData.certificate).length : 0,
+      signatureLength: formData?.signature ? String(formData.signature).length : 0,
+      signaturesLength: formData?.signatures ? String(formData.signatures).length : 0,
+      invoiceInfoLength: formData?.invoiceInfo ? String(formData.invoiceInfo).length : 0,
+      awpActionInfosLength: formData?.awpActionInfos ? String(formData.awpActionInfos).length : 0,
+      requestBody: truncate(entry.requestBody),
+      responsePreview: truncate(String(entry.responseText || '').slice(0, 2000))
+    };
+
+    window.__esfBioLastSubmitTrace = {
+      capturedAt: new Date().toISOString(),
+      ...summary
+    };
+
+    logConsole('signed submit request captured', summary);
+    emit({
+      kind: 'function',
+      method: 'CAPTURED',
+      url: 'signed-submit-request',
+      requestBody: truncate(entry.requestBody),
+      status: entry.status || 0,
+      responseText: safeJson(summary)
+    });
+  };
+
   const describeElement = (element) => {
     if (!element || !(element instanceof HTMLElement)) {
       return null;
@@ -317,11 +386,20 @@
       button.textContent = 'Подписываю...';
       try {
         const signed = await requestRawSign(window.__esfBioLastDocumentHash.hash);
+        window.__esfBioLastRawSignature = {
+          capturedAt: new Date().toISOString(),
+          certificate: signed.certificate || '',
+          signature: signed.signature || '',
+          diagnostics: signed.diagnostics || null,
+          documentHash: window.__esfBioLastDocumentHash.hash,
+          documentHashSummary: window.__esfBioLastDocumentHash.hashSummary
+        };
         const result = {
           certificateLength: signed.certificate ? String(signed.certificate).length : 0,
           signatureLength: signed.signature ? String(signed.signature).length : 0,
           diagnostics: signed.diagnostics || null,
-          lastDocumentHash: window.__esfBioLastDocumentHash.hashSummary
+          lastDocumentHash: window.__esfBioLastDocumentHash.hashSummary,
+          savedAs: 'window.__esfBioLastRawSignature'
         };
         logConsole('React bio sign RESULT', result);
         emit({
@@ -594,6 +672,12 @@
         responseText,
         status: response.status
       });
+      summarizeSubmitRequest({
+        url,
+        requestBody,
+        responseText,
+        status: response.status
+      });
       return response;
     } catch (error) {
       emit({
@@ -625,15 +709,23 @@
   XMLHttpRequest.prototype.send = function patchedSend(body) {
     const debug = this.__esfBioDebug || {};
     debug.startedAt = Date.now();
-    bodyToText(body)
+    debug.requestBodyPromise = bodyToText(body)
       .then((text) => {
         debug.requestBody = text;
+        debug.requestBodyReady = true;
+        return text;
       })
       .catch((error) => {
         debug.requestBody = `[request capture failed: ${error.message}]`;
+        debug.requestBodyReady = true;
+        return debug.requestBody;
       });
 
-    this.addEventListener('loadend', () => {
+    this.addEventListener('loadend', async () => {
+      if (debug.requestBodyPromise && !debug.requestBodyReady) {
+        await debug.requestBodyPromise;
+      }
+
       let responseText = null;
       try {
         responseText = this.responseType && this.responseType !== 'text'
@@ -653,6 +745,12 @@
         durationMs: debug.startedAt ? Date.now() - debug.startedAt : null
       });
       rememberPossibleHashResponse({
+        url: debug.url || '',
+        requestBody: debug.requestBody,
+        responseText,
+        status: this.status
+      });
+      summarizeSubmitRequest({
         url: debug.url || '',
         requestBody: debug.requestBody,
         responseText,
