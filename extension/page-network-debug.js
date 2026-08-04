@@ -2,7 +2,13 @@
   const EVENT_TYPE = 'ESF_BIO_NETWORK_DEBUG_EVENT';
   const RAW_SIGN_REQUEST_TYPE = 'ESF_BIO_RAW_SIGN_REQUEST';
   const RAW_SIGN_RESPONSE_TYPE = 'ESF_BIO_RAW_SIGN_RESPONSE';
+  const AWP_DRY_RUN_FLAG = '__esfBioAwpDryRun';
   const MAX_TEXT_LENGTH = 200000;
+
+  // Debug-only safety gate: keep AWP submissions local until its signing payload is verified.
+  if (typeof window[AWP_DRY_RUN_FLAG] === 'undefined') {
+    window[AWP_DRY_RUN_FLAG] = true;
+  }
 
   if (window.__esfBioNetworkDebugInstalled) {
     return;
@@ -218,6 +224,44 @@
       status: entry.status || 0,
       responseText: safeJson(summary)
     });
+  };
+
+  const isAwpSubmitUrl = (url) => [
+    '/awp/create',
+    '/awp/sendSignedDrafts',
+    '/awp/sendSignedImported'
+  ].some((path) => String(url || '').includes(path));
+
+  const isAwpDryRunEnabled = () => window[AWP_DRY_RUN_FLAG] === true;
+
+  const logBlockedAwpSubmit = ({ method, url, requestBody, status = 409 }) => {
+    const responseText = JSON.stringify({
+      success: false,
+      error: 'ESF Bio Auth AWP dry-run: final request blocked'
+    });
+    const entry = {
+      kind: 'awp-dry-run-blocked',
+      method,
+      url,
+      requestBody,
+      status,
+      dryRunBlocked: true,
+      responseText
+    };
+
+    logConsole('AWP final request BLOCKED (dry-run)', {
+      method,
+      url,
+      requestBodyLength: String(requestBody || '').length,
+      status
+    });
+    emit(entry);
+    summarizeSubmitRequest(entry);
+    window.__esfBioLastAwpSubmitTrace = {
+      capturedAt: new Date().toISOString(),
+      ...entry
+    };
+    return responseText;
   };
 
   const deriveSubmitUrlFromHashUrl = (hashUrl) => {
@@ -896,6 +940,18 @@
       requestBody = `[request capture failed: ${error.message}]`;
     }
 
+    if (isAwpDryRunEnabled() && isAwpSubmitUrl(url)) {
+      const responseText = logBlockedAwpSubmit({
+        method,
+        url,
+        requestBody
+      });
+      return new Response(responseText, {
+        status: 409,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
     try {
       const response = await originalFetch.apply(this, arguments);
       let responseText = null;
@@ -1008,6 +1064,18 @@
       });
     });
 
+    if (isAwpDryRunEnabled() && isAwpSubmitUrl(debug.url)) {
+      debug.requestBodyPromise.then((requestBody) => {
+        logBlockedAwpSubmit({
+          method: debug.method || 'POST',
+          url: debug.url || '',
+          requestBody
+        });
+        this.abort();
+      });
+      return;
+    }
+
     return originalSend.apply(this, arguments);
   };
 
@@ -1018,7 +1086,10 @@
     status: 0,
     responseText: 'ESF Bio Auth network debug installed'
   });
-  logConsole('installed', 'network/signing debug hooks are active');
+  logConsole('installed', {
+    hooks: 'network/signing',
+    awpDryRun: isAwpDryRunEnabled()
+  });
 
   installBioNcaLayerWebSocket();
   installFunctionHooks();
