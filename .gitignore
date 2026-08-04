@@ -3,6 +3,7 @@
 # Build outputs
 native-host/bin/
 sdk-bridge/bin/
+dist/
 debug/
 esf-sdk-2025/
 
