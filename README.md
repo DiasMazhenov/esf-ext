@@ -1,100 +1,97 @@
 # ESF Bio Auth
 
-Chrome MV3 extension for ESF certificate authentication and document signing.
-On macOS, system biometrics unlock the local certificate PIN through a Swift
-Native Messaging host. ESF still receives the official certificate-based
-signature; biometrics are only a local approval gate.
+Расширение Chrome MV3 для авторизации и подписания документов в ИС ЭСФ.
+На macOS системная биометрия открывает локальный PIN сертификата через Swift
+Native Messaging host. ЭСФ по-прежнему получает официальную подпись на основе
+сертификата; биометрия используется только как локальное подтверждение.
 
-## What Is Included
+## Состав проекта
 
-- `extension/` - unpacked Chrome extension.
-- `native-host/` - Swift Native Messaging host and macOS Keychain integration.
-- `sdk-bridge/` - Java/Kalkan bridge with vendored ESF SDK runtime JARs.
-- `build-macos.sh` - builds a distributable macOS package.
-- `macos/install.sh` - installs the host and runtime into a stable directory.
+- `extension/` - расширение Chrome для загрузки в режиме unpacked.
+- `native-host/` - Swift Native Messaging host и работа с macOS Keychain.
+- `sdk-bridge/` - Java/Kalkan bridge с JAR-файлами SDK внутри проекта.
+- `build-macos.sh` - сборка переносимого пакета macOS.
+- `macos/install.sh` - установка host и runtime в стабильную папку.
 
-The downloaded `esf-sdk-2025` directory is not required at runtime. The
-required SDK JARs are already in `sdk-bridge/lib`.
+Скачанная папка `esf-sdk-2025` не нужна для работы. Необходимые JAR-файлы SDK
+уже находятся в `sdk-bridge/lib`.
 
-## Requirements
+## Требования
 
-- macOS with Chrome.
-- OpenJDK 21. Install with `brew install openjdk@21`, or set `ESF_JAVA_HOME`.
-- An ESF `.p12` certificate and its PIN.
-- A Mac with Touch ID or another supported macOS biometric method.
+- macOS и Google Chrome.
+- OpenJDK 21. Установка: `brew install openjdk@21`, либо укажите
+  `ESF_JAVA_HOME`.
+- Сертификат ЭЦП `.p12` и его PIN.
+- Mac с Touch ID или другим поддерживаемым способом биометрии macOS.
 
-The current extension ID is fixed by the manifest key:
+Постоянный ID расширения задаётся ключом в manifest:
 `bjokedaeolojcgaaanfhpofelnfgkebk`.
 
-## Build A macOS Package
+## Сборка macOS
 
-From the repository root:
+Из корня репозитория выполните:
 
 ```bash
 ./build-macos.sh
 ```
 
-The output is created under `dist/`:
+Для текущей Apple Silicon машины результатом будет:
 
 ```text
-dist/ESF-Bio-Auth-macOS-v0.1.53.zip
+dist/ESF-Bio-Auth-macOS-arm64-v0.1.56.zip
 ```
 
-The build includes the extension, native host, compiled Java bridge, and all
-vendored SDK JARs. By default the Swift host is built for the current Mac
-architecture and the architecture is included in the package name. On an
-Apple Silicon Mac this produces:
+Пакет содержит расширение, Swift host, Java bridge и все JAR-файлы SDK.
+По умолчанию host собирается под текущую архитектуру Mac.
 
-```bash
-dist/ESF-Bio-Auth-macOS-arm64-v0.1.55.zip
-```
-
-To request a universal arm64/x86_64 host, use `MACOS_UNIVERSAL=1`. This
-requires a macOS SDK that can cross-compile both architectures:
+Для запроса universal-сборки arm64/x86_64:
 
 ```bash
 MACOS_UNIVERSAL=1 ./build-macos.sh
 ```
 
-## Install On macOS
+Для universal-сборки macOS SDK должен поддерживать кросс-компиляцию обеих
+архитектур.
 
-Unzip the package, then run:
+## Установка на macOS
+
+Распакуйте ZIP и запустите:
 
 ```bash
 ./install-macos.sh
 ```
 
-The installer copies runtime files to:
+Runtime будет установлен в:
 
 ```text
 ~/Library/Application Support/ESF Bio Auth/
 ```
 
-It also registers the Native Messaging host for Chrome. In `chrome://extensions`:
+Установщик также зарегистрирует Native Messaging host для Chrome. Затем в
+`chrome://extensions`:
 
-1. Enable **Developer mode**.
-2. Click **Load unpacked**.
-3. Select `~/Library/Application Support/ESF Bio Auth/extension`.
-4. Reload the extension and the ESF tab.
+1. Включите **Режим разработчика**.
+2. Нажмите **Загрузить распакованное расширение**.
+3. Выберите `~/Library/Application Support/ESF Bio Auth/extension`.
+4. Перезагрузите расширение и вкладку ESF.
 
-If Chrome shows a Native Messaging error, verify that the loaded extension ID
-is `bjokedaeolojcgaaanfhpofelnfgkebk` and that the registered host manifest
-points to the installed `native-host/bin/esf-touchid-native-host`.
+Если Chrome показывает ошибку Native Messaging, проверьте ID загруженного
+расширения: `bjokedaeolojcgaaanfhpofelnfgkebk`. Manifest host должен указывать
+на установленный файл `native-host/bin/esf-touchid-native-host`.
 
-## Configure And Use
+## Настройка и использование
 
-1. Open the extension popup.
-2. Enter the IIN and select the `.p12` certificate.
-3. Enter the certificate PIN and save. The PIN is stored in macOS Keychain,
-   not in Chrome storage.
-4. Open ESF and click **Войти через биометрию**.
-5. For an invoice or AWP, use **Подписать через биометрию** in the ESF signing
-   dialog.
+1. Откройте popup расширения.
+2. Введите ИИН и выберите сертификат `.p12`.
+3. Введите PIN ЭЦП и сохраните настройку. PIN хранится в macOS Keychain, а не
+   в хранилище Chrome.
+4. Откройте ЭСФ и нажмите **Войти через биометрию**.
+5. Для ЭСФ или АВР в окне подписания нажмите **Подписать через биометрию**.
 
-The ESF page flow remains the official flow. The extension supplies the local
-certificate signature after biometric confirmation.
+Страница ЭСФ использует свой штатный flow. Расширение передаёт локальную
+подпись после подтверждения биометрией.
 
-## Development Checks
+## Проверки разработчика
 
 ```bash
 node -e "JSON.parse(require('fs').readFileSync('extension/manifest.json')); console.log('manifest ok')"
@@ -107,13 +104,13 @@ node --check extension/page-network-debug.js
 node native-host/test-ping.js
 ```
 
-Do not commit `.p12`, PINs, Keychain exports, debug traces, or generated
-runtime output. The debug trace is temporary and may contain document data.
+Не добавляйте в Git `.p12`, PIN, экспорт Keychain, debug trace и сгенерированные
+runtime-файлы. Debug trace может содержать данные документов.
 
-## Current Limitations
+## Ограничения
 
-- Chrome still requires loading the unpacked extension manually. A Chrome Web
-  Store package is a separate distribution step.
-- Java 21 is a target-machine prerequisite; the JDK is not bundled in the zip.
-- The main login/signing path uses the native SDK bridge. NCALayer code remains
-  only as a debug fallback.
+- Chrome требует вручную загрузить unpacked-расширение. Публикация в Chrome Web
+  Store - отдельный этап.
+- OpenJDK 21 должен быть установлен на целевом Mac; JDK не включён в ZIP.
+- Основной flow использует локальный SDK bridge. Код NCALayer оставлен только
+  как debug fallback.
