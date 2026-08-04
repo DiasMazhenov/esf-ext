@@ -169,7 +169,8 @@ const sendActiveEsfTabCommand = async (payload) => {
     activeUrl = null;
   }
 
-  if (!activeTab?.id || activeUrl?.protocol !== 'https:' || activeUrl.hostname !== 'esf.gov.kz') {
+  const allowedHosts = new Set(['esf.gov.kz', 'test3.esf.kgd.gov.kz']);
+  if (!activeTab?.id || activeUrl?.protocol !== 'https:' || !allowedHosts.has(activeUrl.hostname)) {
     return {
       ok: false,
       error: 'Откройте активную вкладку ESF и нажмите вход снова. Web-вход выполняется через страницу ESF.'
