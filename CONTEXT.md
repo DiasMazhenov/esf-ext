@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.48
+0.1.49
 ```
 
 Next verification step:
@@ -403,7 +403,8 @@ Completed:
 - debug trace now highlights signed submit requests for `/invoice/create`, `/invoice/sendSignedDrafts`, `/invoice/sendSignedImported`, `/awp/create`, `/awp/sendSignedDrafts`, `/awp/sendSignedImported`;
 - SDK runtime JARs are vendored in `sdk-bridge/lib`; the Java bridge no longer depends on the deleted external `esf-sdk-2025` directory;
 - native host resolves `sdk-bridge/bin/sign-xml` and `sdk-bridge/bin/sign-raw` relative to its own executable;
-- extension version bumped to display `0.1.48` (`manifest.version` is `0.1.48`, `manifest.version_name` is `0.1.48`).
+- native host path resolution now reaches the repository root before locating `sdk-bridge`;
+- extension version bumped to display `0.1.49` (`manifest.version` is `0.1.49`, `manifest.version_name` is `0.1.49`).
 
 Pending:
 - Capture the exact official signed-submit payload once, or extract it from ESF bundle, then wire biometric signature into the same payload.

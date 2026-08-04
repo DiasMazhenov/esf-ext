@@ -97,6 +97,7 @@ let soapPasswordAccount = "soap-password"
 let nativeHostBinDirectory = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
 let sdkBridgeDirectory = nativeHostBinDirectory
     .deletingLastPathComponent()
+    .deletingLastPathComponent()
     .appendingPathComponent("sdk-bridge", isDirectory: true)
 let signXmlPath = sdkBridgeDirectory.appendingPathComponent("bin/sign-xml").path
 let signRawPath = sdkBridgeDirectory.appendingPathComponent("bin/sign-raw").path
