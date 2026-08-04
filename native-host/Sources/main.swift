@@ -94,8 +94,12 @@ enum NativeHostError: Error {
 let keychainService = "kz.esf.touchid"
 let pinAccount = "certificate-pin"
 let soapPasswordAccount = "soap-password"
-let signXmlPath = "/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/bin/sign-xml"
-let signRawPath = "/Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/bin/sign-raw"
+let nativeHostBinDirectory = URL(fileURLWithPath: CommandLine.arguments[0]).deletingLastPathComponent()
+let sdkBridgeDirectory = nativeHostBinDirectory
+    .deletingLastPathComponent()
+    .appendingPathComponent("sdk-bridge", isDirectory: true)
+let signXmlPath = sdkBridgeDirectory.appendingPathComponent("bin/sign-xml").path
+let signRawPath = sdkBridgeDirectory.appendingPathComponent("bin/sign-raw").path
 let esfWebUrl = "https://esf.gov.kz:8443/esf-web"
 
 func appSupportDir(create: Bool) throws -> URL {

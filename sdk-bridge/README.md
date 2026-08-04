@@ -2,26 +2,13 @@
 
 This folder is for the Java/Kalkan ESF SDK signing bridge.
 
-## Current blocker
+## Runtime requirements
 
-The downloaded ESF SDK signing code depends on Java. On this machine, `java -jar` currently fails with macOS Java Runtime missing message, so signing cannot be executed yet.
+The bridge requires Java 21. Its SDK runtime JARs are vendored in
+`sdk-bridge/lib`, so the bridge does not depend on the original downloaded SDK
+directory.
 
-Install a JDK before implementing/running signer commands.
-
-## SDK evidence
-
-SDK local server entrypoint:
-
-```bash
-cd "/Users/diasmazhenov/Downloads/esf-sdk-2025/Документация ЭСФ SDK/sdk/localserver"
-java -jar esf_local_server.jar
-```
-
-Source samples:
-- `examples/localserver/DocumentSigner.java` loads `.p12` by `certificatePath` + `certificatePin` and signs XML/data.
-- `examples/localserver/EsfLocalService.java` exposes local SOAP methods for document and XML signatures.
-
-Relevant SDK jars:
+Relevant SDK jars included in `sdk-bridge/lib`:
 - `kalkan-0.7.2.jar`
 - `kalkan-xmldsig-0.4.jar`
 - `knca_provider_util-0.8.jar`
@@ -64,12 +51,12 @@ Java runtime installed via Homebrew:
 /Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/build.sh
 ```
 
-Local signing smoke test passed with bundled SDK sample certificate:
+Run a local signing smoke test with a certificate path and PIN:
 
 ```bash
 /Users/diasmazhenov/vibecode/esf-ext/sdk-bridge/test-sign.sh \
-  "/Users/diasmazhenov/Downloads/esf-sdk-2025/Документация ЭСФ SDK/sdk/localserver/AUTH_RSA256_CUSTOMER_NEW.p12" \
-  "Qwerty12"
+  "/path/to/certificate.p12" \
+  "certificate-pin"
 ```
 
 Expected output:

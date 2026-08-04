@@ -245,7 +245,7 @@ Latest live `createAuthTicket` check against the configured ESF endpoint:
 Current extension version:
 
 ```text
-0.1.47
+0.1.48
 ```
 
 Next verification step:
@@ -401,7 +401,9 @@ Completed:
 - unsigned form fields from the `/invoice/hash` or `/awp/hash` request are combined with biometric `certificate` and `signature` into `window.__esfBioLastSubmitCandidate`;
 - biometric document signing delegates submit to the official ESF flow by returning a NCALayer-compatible raw signature to ESF's own `getSignature` code;
 - debug trace now highlights signed submit requests for `/invoice/create`, `/invoice/sendSignedDrafts`, `/invoice/sendSignedImported`, `/awp/create`, `/awp/sendSignedDrafts`, `/awp/sendSignedImported`;
-- extension version bumped to display `0.1.47` (`manifest.version` is `0.1.47`, `manifest.version_name` is `0.1.47`).
+- SDK runtime JARs are vendored in `sdk-bridge/lib`; the Java bridge no longer depends on the deleted external `esf-sdk-2025` directory;
+- native host resolves `sdk-bridge/bin/sign-xml` and `sdk-bridge/bin/sign-raw` relative to its own executable;
+- extension version bumped to display `0.1.48` (`manifest.version` is `0.1.48`, `manifest.version_name` is `0.1.48`).
 
 Pending:
 - Capture the exact official signed-submit payload once, or extract it from ESF bundle, then wire biometric signature into the same payload.

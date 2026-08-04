@@ -4,6 +4,7 @@
 native-host/bin/
 sdk-bridge/bin/
 debug/
+esf-sdk-2025/
 
 # Local/private certificate material
 *.p12
