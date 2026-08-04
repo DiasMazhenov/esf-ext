@@ -234,6 +234,14 @@
 
   const isAwpDryRunEnabled = () => window[AWP_DRY_RUN_FLAG] === true;
 
+  const isAwpSigningPage = () => {
+    try {
+      return new URL(window.location.href).pathname.includes('/awp');
+    } catch {
+      return false;
+    }
+  };
+
   const logBlockedAwpSubmit = ({ method, url, requestBody, status = 409 }) => {
     const responseText = JSON.stringify({
       success: false,
@@ -642,7 +650,7 @@
         responseText: safeJson(trace)
       });
 
-      if (!window.__esfBioLastDocumentHash?.hash) {
+      if (!window.__esfBioLastDocumentHash?.hash && !isAwpSigningPage()) {
         const error = 'Нет последнего XML из /invoice/hash или /awp/hash.';
         logConsole('React bio sign ERROR', error);
         emit({
