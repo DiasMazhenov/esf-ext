@@ -27,7 +27,22 @@ public final class SignXml {
         }
 
         String certificatePath = args[0];
-        String certificatePin = args.length == 2 ? args[1] : System.getenv("ESF_CERT_PIN");
+        String certificatePin;
+        if (args.length == 2 && "--pin-stdin".equals(args[1])) {
+            // Local-only mode: secret is sent through an anonymous pipe,
+            // not included in process arguments, environment or logs.
+            java.io.ByteArrayOutputStream pinBytes = new java.io.ByteArrayOutputStream();
+            int character;
+            while ((character = System.in.read()) != -1 && character != '\n') {
+                if (pinBytes.size() >= 512) throw new IllegalArgumentException("certificate-pin-too-long");
+                pinBytes.write(character);
+            }
+            if (character == -1) throw new IllegalArgumentException("missing-xml-after-pin");
+            certificatePin = pinBytes.toString(StandardCharsets.UTF_8);
+            pinBytes.reset();
+        } else {
+            certificatePin = args.length == 2 ? args[1] : System.getenv("ESF_CERT_PIN");
+        }
         String xml = new String(System.in.readAllBytes(), StandardCharsets.UTF_8);
 
         if (certificatePin == null || certificatePin.trim().isEmpty()) {
